@@ -1,6 +1,7 @@
-import Link from 'next/link'
+export default function DailyReport({ searchParams }) {
+  const project_name = searchParams?.project_name || ''
+  const project_id = searchParams?.project_id || ''
 
-export default function DailyReport() {
   return (
     <main style={{
       minHeight: '100vh',
@@ -18,26 +19,39 @@ export default function DailyReport() {
         boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
       }}>
         <div style={{ marginBottom: '1.5rem' }}>
-          <Link href="/" style={{ color: '#cc3300', textDecoration: 'none', fontSize: '.9rem' }}>
-            ← Back to Home
-          </Link>
+          <a href={project_id ? `/projects/${project_id}` : '/'} style={{ color: '#cc3300', textDecoration: 'none', fontSize: '.9rem' }}>
+            ← Back
+          </a>
         </div>
 
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <h1 style={{ color: '#1a1a1a', fontSize: '1.8rem', marginBottom: '.5rem' }}>
             Daily Report
           </h1>
+          {project_name && (
+            <p style={{ color: '#cc3300', fontSize: '1rem', fontWeight: '600' }}>
+              {project_name}
+            </p>
+          )}
           <p style={{ color: '#666', fontSize: '.95rem' }}>
             Fill out the form below. Save and send PDF when ready.
           </p>
         </div>
 
         <form action="/api/submit" method="POST" encType="multipart/form-data">
+          <input type="hidden" name="project_id" value={project_id} />
+
           <div style={{ marginBottom: '1.2rem' }}>
             <label style={{ display: 'block', fontWeight: '600', marginBottom: '.4rem', color: '#333' }}>
               Project Name
             </label>
-            <input name="project_name" required style={inputStyle} placeholder="e.g. Wichita Substation" />
+            <input
+              name="project_name"
+              required
+              style={inputStyle}
+              defaultValue={project_name}
+              placeholder="e.g. Wichita Substation"
+            />
           </div>
           <div style={{ marginBottom: '1.2rem' }}>
             <label style={{ display: 'block', fontWeight: '600', marginBottom: '.4rem', color: '#333' }}>
@@ -68,7 +82,7 @@ export default function DailyReport() {
             <label style={{ display: 'block', fontWeight: '600', marginBottom: '.4rem', color: '#333' }}>
               Safety / Issues
             </label>
-            <input name="safety_issues" required style={inputStyle} placeholder='e.g. None, or describe any incidents' />
+            <input name="safety_issues" required style={inputStyle} placeholder="e.g. None, or describe any incidents" />
           </div>
           <div style={{ marginBottom: '1.2rem' }}>
             <label style={{ display: 'block', fontWeight: '600', marginBottom: '.4rem', color: '#333' }}>
