@@ -22,7 +22,7 @@ export default async function ProjectDetail({ params }) {
   const { data: reports } = await supabase
     .from('reports')
     .select('*')
-    .eq('project_name', project.project_name)
+    .eq('project_id', project.id)
     .order('report_date', { ascending: false })
 
   return (
@@ -59,4 +59,81 @@ export default async function ProjectDetail({ params }) {
         <div style={{ padding: '1.5rem 2rem' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem' }}>
             <div>
-              <div style={{ fontSize: '.75rem', fontWeight: '700', color: '#999', textTransform: 'uppercase', letter​​​​​​​​​​​​​​​​
+              <div style={{ fontSize: '.75rem', fontWeight: '700', color: '#999', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: '.3rem' }}>
+                Owner / Client
+              </div>
+              <div style={{ fontSize: '1rem', color: '#1a1a1a' }}>{project.client_name}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '.75rem', fontWeight: '700', color: '#999', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: '.3rem' }}>
+                Client Email
+              </div>
+              <div style={{ fontSize: '1rem', color: '#1a1a1a' }}>{project.client_email}</div>
+            </div>
+            {project.start_date && (
+              <div>
+                <div style={{ fontSize: '.75rem', fontWeight: '700', color: '#999', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: '.3rem' }}>
+                  Start Date
+                </div>
+                <div style={{ fontSize: '1rem', color: '#1a1a1a' }}>{project.start_date}</div>
+              </div>
+            )}
+            {project.notes && (
+              <div style={{ gridColumn: '1 / -1' }}>
+                <div style={{ fontSize: '.75rem', fontWeight: '700', color: '#999', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: '.3rem' }}>
+                  Notes
+                </div>
+                <div style={{ fontSize: '1rem', color: '#1a1a1a', lineHeight: '1.6' }}>{project.notes}</div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
+        <Link href={`/daily-report?project_id=${project.id}&project_name=${encodeURIComponent(project.project_name)}`} style={{
+          flex: 1,
+          minWidth: '140px',
+          padding: '.8rem 1rem',
+          background: '#cc3300',
+          color: 'white',
+          borderRadius: '6px',
+          textDecoration: 'none',
+          fontWeight: '600',
+          fontSize: '.9rem',
+          textAlign: 'center'
+        }}>
+          + Daily Report
+        </Link>
+        <Link href={`/pour-log?project_id=${project.id}&project_name=${encodeURIComponent(project.project_name)}`} style={{
+          flex: 1,
+          minWidth: '140px',
+          padding: '.8rem 1rem',
+          background: '#1a1a1a',
+          color: 'white',
+          borderRadius: '6px',
+          textDecoration: 'none',
+          fontWeight: '600',
+          fontSize: '.9rem',
+          textAlign: 'center'
+        }}>
+          + Pour Log
+        </Link>
+        <Link href={`/projects/${project.id}/edit`} style={{
+          flex: 1,
+          minWidth: '140px',
+          padding: '.8rem 1rem',
+          background: 'white',
+          color: '#1a1a1a',
+          border: '2px solid #e5e5e5',
+          borderRadius: '6px',
+          textDecoration: 'none',
+          fontWeight: '600',
+          fontSize: '.9rem',
+          textAlign: 'center'
+        }}>
+          Edit Project
+        </Link>
+      </div>
+
+      <h2 style={{ fontSize: '1.2rem', color: '#1a1a1a', marginBottom: '1rem'​​​​​​​​​​​​​​​​
