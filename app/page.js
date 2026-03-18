@@ -101,6 +101,26 @@ export default function Home() {
               </div>
             </div>
           </Link>
+
+          <Link href="/settings" style={{ textDecoration: 'none' }}>
+            <div style={{
+              background: 'white',
+              border: '2px solid #e5e5e5',
+              borderRadius: '10px',
+              padding: '1.5rem 2rem',
+              color: '#1a1a1a',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1rem'
+            }}>
+              <div style={{ fontSize: '1.5rem' }}>⚙️</div>
+              <div>
+                <div style={{ fontSize: '1rem', fontWeight: '700' }}>Settings</div>
+                <div style={{ fontSize: '.85rem', color: '#666' }}>Company name, email, phone</div>
+              </div>
+            </div>
+          </Link>
         </div>
       </div>
     </main>
