@@ -6,6 +6,21 @@ const supabase = createClient(
   process.env.SUPABASE_SECRET_KEY
 )
 
+function formatDate(dateStr) {
+  if (!dateStr) return '-'
+  const [year, month, day] = dateStr.split('-')
+  return month + '-' + day + '-' + year
+}
+
+function formatTime(time) {
+  if (!time) return '-'
+  const [hourStr, minute] = time.split(':')
+  const hour = parseInt(hourStr)
+  const ampm = hour >= 12 ? 'PM' : 'AM'
+  const hour12 = hour % 12 || 12
+  return hour12 + ':' + minute + ' ' + ampm
+}
+
 export async function GET(request, { params }) {
   const { data: log, error } = await supabase
     .from('pour_logs')
@@ -28,24 +43,24 @@ export async function GET(request, { params }) {
     .eq('pour_log_id', log.id)
     .order('truck_number', { ascending: true })
 
+  const { data: settings } = await supabase
+    .from('settings')
+    .select('company_name')
+    .single()
+
+  const companyName = settings?.company_name || 'Field Reports'
+
   const pdfDoc = await PDFDocument.create()
   const page = pdfDoc.addPage([612, 792])
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
   const { height } = page.getSize()
 
-  // Header
   page.drawRectangle({ x: 0, y: height - 80, width: 612, height: 80, color: rgb(0.1, 0.1, 0.1) })
   page.drawText('DRILLED SHAFT POUR LOG', { x: 40, y: height - 45, size: 20, font: boldFont, color: rgb(1, 1, 1) })
-  page.drawText('Ironclad Construction LLC', { x: 40, y: height - 65, size: 11, font, color: rgb(0.8, 0.8, 0.8) })
+  page.drawText(companyName, { x: 40, y: height - 65, size: 11, font, color: rgb(0.8, 0.8, 0.8) })
 
   let y = height - 100
-
-  const drawField = (label, value, x, yPos, width) => {
-    page.drawText(label, { x, y: yPos, size: 8, font: boldFont, color: rgb(0.5, 0.5, 0.5) })
-    page.drawText(String(value || '-'), { x, y: yPos - 14, size: 10, font, color: rgb(0.1, 0.1, 0.1) })
-    return yPos - 30
-  }
 
   const drawLine = (yPos) => {
     page.drawLine({ start: { x: 40, y: yPos }, end: { x: 572, y: yPos }, thickness: 0.5, color: rgb(0.85, 0.85, 0.85) })
@@ -57,22 +72,16 @@ export async function GET(request, { params }) {
     return yPos - 24
   }
 
-  // Job Info
   y = drawSectionHeader('JOB INFO', y)
-  y = drawField('PROJECT', log.project_name, 40, y, 200)
-  const y2 = drawField('DATE', log.log_date, 220, y + 30, 150)
-  y = Math.min(y, y2)
-  y = drawField('WEATHER', log.weather, 40, y, 150)
-  const y3 = drawField('AMBIENT TEMP', log.ambient_temp, 220, y + 30, 150)
-  y = Math.min(y, y3)
-  y = drawField('SUPPLIER', log.concrete_supplier, 40, y, 200)
-  const y4 = drawField('SUBMITTED BY', log.submitted_by, 220, y + 30, 150)
-  y = Math.min(y, y4)
-  y -= 10
+  page.drawText('PROJECT: ' + (log.project_name || '-'), { x: 40, y, size: 10, font: boldFont, color: rgb(0.1, 0.1, 0.1) })
+  y -= 16
+  page.drawText('DATE: ' + formatDate(log.log_date) + '   WEATHER: ' + (log.weather || '-') + '   TEMP: ' + (log.ambient_temp || '-'), { x: 40, y, size: 9, font, color: rgb(0.3, 0.3, 0.3) })
+  y -= 14
+  page.drawText('SUPPLIER: ' + (log.concrete_supplier || '-') + '   SUBMITTED BY: ' + (log.submitted_by || '-'), { x: 40, y, size: 9, font, color: rgb(0.3, 0.3, 0.3) })
+  y -= 18
   drawLine(y)
-  y -= 15
+  y -= 14
 
-  // Foundations
   if (foundations && foundations.length > 0) {
     y = drawSectionHeader('FOUNDATIONS POURED', y)
     for (const f of foundations) {
@@ -88,27 +97,20 @@ export async function GET(request, { params }) {
       y -= 6
     }
     drawLine(y)
-    y -= 15
+    y -= 14
   }
 
-  // Trucks
   if (trucks && trucks.length > 0) {
     y = drawSectionHeader('CONCRETE TRUCKS', y)
     for (const t of trucks) {
-      if (y < 120) {
-        const newPage = pdfDoc.addPage([612, 792])
-        y = 750
-      }
+      if (y < 120) break
       page.drawText('TRUCK ' + t.truck_number, { x: 40, y, size: 11, font: boldFont, color: rgb(0.1, 0.1, 0.1) })
       y -= 16
-      const timeStr = 'Arrival: ' + (t.arrival_time || '-') + '   Start: ' + (t.pour_start || '-') + '   Complete: ' + (t.pour_complete || '-')
-      page.drawText(timeStr, { x: 44, y, size: 9, font, color: rgb(0.3, 0.3, 0.3) })
+      page.drawText('Arrival: ' + formatTime(t.arrival_time) + '   Start: ' + formatTime(t.pour_start) + '   Complete: ' + formatTime(t.pour_complete), { x: 44, y, size: 9, font, color: rgb(0.3, 0.3, 0.3) })
       y -= 14
-      const mixStr = 'Yards: ' + (t.yards || '-') + '   Temp: ' + (t.concrete_temp || '-') + '   Slump: ' + (t.slump || '-') + '   Air: ' + (t.air_content || '-')
-      page.drawText(mixStr, { x: 44, y, size: 9, font, color: rgb(0.3, 0.3, 0.3) })
+      page.drawText('Yards: ' + (t.yards || '-') + '   Temp: ' + (t.concrete_temp || '-') + '   Slump: ' + (t.slump || '-') + '   Air: ' + (t.air_content || '-'), { x: 44, y, size: 9, font, color: rgb(0.3, 0.3, 0.3) })
       y -= 14
-      const extraStr = 'Water Added: ' + (t.water_added || '-') + '   Cylinders: ' + (t.cylinders_cast || '-') + '   Depth Reading: ' + (t.depth_reading || '-')
-      page.drawText(extraStr, { x: 44, y, size: 9, font, color: rgb(0.3, 0.3, 0.3) })
+      page.drawText('Water Added: ' + (t.water_added || '-') + '   Cylinders: ' + (t.cylinders_cast || '-') + '   Depth Reading: ' + (t.depth_reading || '-'), { x: 44, y, size: 9, font, color: rgb(0.3, 0.3, 0.3) })
       y -= 14
       if (t.foundations_served) {
         page.drawText('Foundations Served: ' + t.foundations_served, { x: 44, y, size: 9, font, color: rgb(0.3, 0.3, 0.3) })
@@ -124,8 +126,7 @@ export async function GET(request, { params }) {
     }
   }
 
-  // Footer
-  page.drawText('Generated by Ironclad Reports - ' + new Date().toLocaleDateString(), {
+  page.drawText('Generated by ' + companyName + ' - ' + new Date().toLocaleDateString(), {
     x: 40, y: 25, size: 8, font, color: rgb(0.6, 0.6, 0.6)
   })
 
