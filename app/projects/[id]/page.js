@@ -25,6 +25,12 @@ export default async function ProjectDetail({ params }) {
     .eq('project_id', project.id)
     .order('report_date', { ascending: false })
 
+  const { data: pourLogs } = await supabase
+    .from('pour_logs')
+    .select('*')
+    .eq('project_id', project.id)
+    .order('log_date', { ascending: false })
+
   return (
     <main style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem' }}>
       <div style={{ marginBottom: '1.5rem' }}>
@@ -145,13 +151,13 @@ export default async function ProjectDetail({ params }) {
           padding: '2rem',
           textAlign: 'center',
           color: '#666',
-          marginBottom: '2rem'
+          marginBottom: '1rem'
         }}>
           No daily reports yet for this project.
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
         {reports && reports.map((report) => (
           <Link key={report.id} href={'/reports/' + report.id} style={{ textDecoration: 'none' }}>
             <div style={{
@@ -176,6 +182,48 @@ export default async function ProjectDetail({ params }) {
           </Link>
         ))}
       </div>
+
+      <h2 style={{ fontSize: '1.2rem', color: '#1a1a1a', marginBottom: '1rem' }}>Pour Logs</h2>
+
+      {(!pourLogs || pourLogs.length === 0) && (
+        <div style={{
+          background: 'white',
+          borderRadius: '8px',
+          padding: '2rem',
+          textAlign: 'center',
+          color: '#666',
+          marginBottom: '1rem'
+        }}>
+          No pour logs yet for this project.
+        </div>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+        {pourLogs && pourLogs.map((log) => (
+          <Link key={log.id} href={'/pour-logs/' + log.id} style={{ textDecoration: 'none' }}>
+            <div style={{
+              background: 'white',
+              border: '1px solid #e5e5e5',
+              borderRadius: '8px',
+              padding: '1.2rem 1.5rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div>
+                <div style={{ fontWeight: '700', color: '#1a1a1a', fontSize: '1rem', marginBottom: '.25rem' }}>
+                  {log.log_date}
+                </div>
+                <div style={{ color: '#666', fontSize: '.85rem' }}>
+                  Drilled Shaft - {log.submitted_by}
+                </div>
+              </div>
+              <div style={{ color: '#1a1a1a', fontSize: '1.2rem' }}>→</div>
+            </div>
+          </Link>
+        ))}
+      </div>
+
     </main>
   )
 }
