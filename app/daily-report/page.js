@@ -1,4 +1,4 @@
-export default function DailyReport({ searchParams }) {
+export default async function DailyReport({ searchParams }) {
   const project_name = searchParams?.project_name || ''
   const project_id = searchParams?.project_id || ''
 
