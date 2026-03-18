@@ -29,9 +29,27 @@ export default function Home() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <Link href="/daily-report" style={{ textDecoration: 'none' }}>
+          <Link href="/projects" style={{ textDecoration: 'none' }}>
             <div style={{
               background: '#cc3300',
+              borderRadius: '10px',
+              padding: '2rem',
+              color: 'white',
+              cursor: 'pointer'
+            }}>
+              <div style={{ fontSize: '2rem', marginBottom: '.5rem' }}>📁</div>
+              <div style={{ fontSize: '1.3rem', fontWeight: '700', marginBottom: '.4rem' }}>
+                Projects
+              </div>
+              <div style={{ fontSize: '.9rem', opacity: .85 }}>
+                Manage projects and submit reports by project
+              </div>
+            </div>
+          </Link>
+
+          <Link href="/daily-report" style={{ textDecoration: 'none' }}>
+            <div style={{
+              background: '#1a1a1a',
               borderRadius: '10px',
               padding: '2rem',
               color: 'white',
@@ -42,7 +60,7 @@ export default function Home() {
                 Daily Report
               </div>
               <div style={{ fontSize: '.9rem', opacity: .85 }}>
-                Submit your daily crew, work, and safety report
+                Submit a daily crew, work, and safety report
               </div>
             </div>
           </Link>
@@ -60,7 +78,7 @@ export default function Home() {
                 Pour Log
               </div>
               <div style={{ fontSize: '.9rem', opacity: .85 }}>
-                Record concrete pour details, mix design, and placement
+                Record concrete pour details and placement
               </div>
             </div>
           </Link>
@@ -74,17 +92,8 @@ export default function Home() {
               color: '#1a1a1a',
               cursor: 'pointer'
             }}>
-              <div style={{ fontSize: '2rem', marginBottom: '.5rem' }}>📁</div>
+              <div style={{ fontSize: '2rem', marginBottom: '.5rem' }}>📂</div>
               <div style={{ fontSize: '1.3rem', fontWeight: '700', marginBottom: '.4rem' }}>
                 View All Reports
               </div>
-              <div style={{ fontSize: '.9rem', color: '#666' }}>
-                Browse and manage submitted reports
-              </div>
-            </div>
-          </Link>
-        </div>
-      </div>
-    </main>
-  )
-}
+              <div style={{ fontSize: '.9​​​​​​​​​​​​​​​​
