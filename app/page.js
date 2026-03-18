@@ -77,6 +77,20 @@ export default async function Home() {
               </div>
             </div>
           </Link>
+
+          <form action="/api/auth/logout" method="POST">
+            <button type="submit" style={{
+              width: '100%',
+              padding: '1rem',
+              background: 'transparent',
+              border: 'none',
+              color: '#999',
+              fontSize: '.9rem',
+              cursor: 'pointer'
+            }}>
+              Sign Out
+            </button>
+          </form>
         </div>
       </div>
     </main>
