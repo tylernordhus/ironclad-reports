@@ -47,7 +47,7 @@ export default async function ReportDetail({ params }) {
               href={`/api/pdf/${report.id}`}
               style={{
                 flex: 1,
-                minWidth: '160px',
+                minWidth: '140px',
                 padding: '.8rem 1rem',
                 background: '#cc3300',
                 color: 'white',
@@ -64,7 +64,7 @@ export default async function ReportDetail({ params }) {
               href={`/api/resend-email/${report.id}`}
               style={{
                 flex: 1,
-                minWidth: '160px',
+                minWidth: '140px',
                 padding: '.8rem 1rem',
                 background: 'white',
                 color: '#cc3300',
@@ -78,6 +78,23 @@ export default async function ReportDetail({ params }) {
             >
               Resend Email
             </a>
+            <Link
+              href={`/reports/${report.id}/edit`}
+              style={{
+                flex: 1,
+                minWidth: '140px',
+                padding: '.8rem 1rem',
+                background: '#1a1a1a',
+                color: 'white',
+                borderRadius: '6px',
+                textDecoration: 'none',
+                fontWeight: '600',
+                fontSize: '.9rem',
+                textAlign: 'center'
+              }}
+            >
+              Edit Report
+            </Link>
           </div>
         </div>
       </div>
