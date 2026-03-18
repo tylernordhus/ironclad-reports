@@ -22,7 +22,7 @@ export default async function ProjectsPage() {
     <main style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem' }}>
       <div style={{ marginBottom: '1.5rem' }}>
         <Link href="/" style={{ color: '#cc3300', textDecoration: 'none', fontSize: '.9rem' }}>
-          ← Back to Home
+          Back to Home
         </Link>
       </div>
 
@@ -56,7 +56,7 @@ export default async function ProjectsPage() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {projects.map((project) => (
-          <Link key={project.id} href={`/projects/${project.id}`} style={{ textDecoration: 'none' }}>
+          <Link key={project.id} href={'/projects/' + project.id} style={{ textDecoration: 'none' }}>
             <div style={{
               background: 'white',
               border: '1px solid #e5e5e5',
@@ -72,7 +72,7 @@ export default async function ProjectsPage() {
                   {project.project_name}
                 </div>
                 <div style={{ color: '#666', fontSize: '.85rem' }}>
-                  {project.location} &nbsp;·&nbsp; GC: {project.gc_name}
+                  {project.location} · Owner/Client: {project.client_name || 'Not set'}
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
