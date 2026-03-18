@@ -96,4 +96,13 @@ export default function Home() {
               <div style={{ fontSize: '1.3rem', fontWeight: '700', marginBottom: '.4rem' }}>
                 View All Reports
               </div>
-              <div style={{ fontSize: '.9​​​​​​​​​​​​​​​​
+              <div style={{ fontSize: '.9rem', color: '#666' }}>
+                Browse and manage all submitted reports
+              </div>
+            </div>
+          </Link>
+        </div>
+      </div>
+    </main>
+  )
+}
