@@ -176,4 +176,176 @@ export default function PourLogFlatwork() {
             </div>
           </div>
           <div style={fieldStyle}>
-            <label style={labelStyle}>General Notes​​​​​​​​​​​​​​​​
+            <label style={labelStyle}>General Notes</label>
+            <textarea name="general_notes" rows={3} style={{ ...inputStyle, resize: 'vertical' }}
+              placeholder="Any notes about the pour, issues, conditions..." />
+          </div>
+        </div>
+
+        <div style={sectionStyle}>
+          <div style={sectionHeaderStyle}>Concrete Trucks</div>
+
+          {trucks.map((t, i) => (
+            <div key={i} style={cardStyle}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <div style={{ fontWeight: '700', color: '#1a1a1a', fontSize: '1.1rem' }}>Truck {t.truck_number}</div>
+                {trucks.length > 1 && (
+                  <button type="button" onClick={() => removeTruck(i)} style={removeBtnStyle}>
+                    Remove
+                  </button>
+                )}
+              </div>
+
+              <div style={rowStyle}>
+                <div style={{ flex: 1 }}>
+                  <label style={labelStyle}>Arrival Time</label>
+                  <input type="time" style={inputStyle} value={t.arrival_time} onChange={e => updateTruck(i, 'arrival_time', e.target.value)} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={labelStyle}>Pour Start</label>
+                  <input type="time" style={inputStyle} value={t.pour_start} onChange={e => updateTruck(i, 'pour_start', e.target.value)} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={labelStyle}>Pour Complete</label>
+                  <input type="time" style={inputStyle} value={t.pour_complete} onChange={e => updateTruck(i, 'pour_complete', e.target.value)} />
+                </div>
+              </div>
+
+              <div style={rowStyle}>
+                <div style={{ flex: 1 }}>
+                  <label style={labelStyle}>Yards</label>
+                  <input style={inputStyle} placeholder="e.g. 9.5" value={t.yards} onChange={e => updateTruck(i, 'yards', e.target.value)} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={labelStyle}>Concrete Temp</label>
+                  <input style={inputStyle} placeholder="e.g. 75°F" value={t.concrete_temp} onChange={e => updateTruck(i, 'concrete_temp', e.target.value)} />
+                </div>
+              </div>
+
+              <div style={rowStyle}>
+                <div style={{ flex: 1 }}>
+                  <label style={labelStyle}>Slump</label>
+                  <input style={inputStyle} placeholder='e.g. 4.5"' value={t.slump} onChange={e => updateTruck(i, 'slump', e.target.value)} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={labelStyle}>Air Content</label>
+                  <input style={inputStyle} placeholder="e.g. 5.0%" value={t.air_content} onChange={e => updateTruck(i, 'air_content', e.target.value)} />
+                </div>
+              </div>
+
+              <div style={rowStyle}>
+                <div style={{ flex: 1 }}>
+                  <label style={labelStyle}>Water Added</label>
+                  <input style={inputStyle} placeholder="None or amount" value={t.water_added} onChange={e => updateTruck(i, 'water_added', e.target.value)} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={labelStyle}>Cylinders Cast</label>
+                  <input style={inputStyle} placeholder="e.g. 4" value={t.cylinders_cast} onChange={e => updateTruck(i, 'cylinders_cast', e.target.value)} />
+                </div>
+              </div>
+
+              <div style={fieldStyle}>
+                <label style={labelStyle}>Truck Notes</label>
+                <input style={inputStyle} placeholder="Any issues with this truck" value={t.notes} onChange={e => updateTruck(i, 'notes', e.target.value)} />
+              </div>
+            </div>
+          ))}
+
+          <button type="button" onClick={addTruck} style={addBtnStyle}>
+            + Add Truck
+          </button>
+        </div>
+
+        <button type="submit" disabled={submitting} style={{
+          width: '100%',
+          padding: '1.1rem',
+          background: submitting ? '#999' : '#cc3300',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          fontSize: '1.1rem',
+          fontWeight: '700',
+          cursor: submitting ? 'not-allowed' : 'pointer',
+          marginTop: '.5rem',
+          marginBottom: '3rem'
+        }}>
+          {submitting ? 'Saving...' : 'Save Pour Log'}
+        </button>
+
+      </form>
+    </main>
+  )
+}
+
+const sectionStyle = {
+  background: 'white',
+  borderRadius: '10px',
+  padding: '1.5rem',
+  marginBottom: '1.5rem',
+  boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
+}
+
+const sectionHeaderStyle = {
+  fontWeight: '800',
+  fontSize: '1.1rem',
+  color: '#1a1a1a',
+  marginBottom: '1.2rem',
+  paddingBottom: '.75rem',
+  borderBottom: '2px solid #f0f0f0'
+}
+
+const fieldStyle = { marginBottom: '1rem' }
+
+const rowStyle = {
+  display: 'flex',
+  gap: '1rem',
+  marginBottom: '1rem'
+}
+
+const cardStyle = {
+  background: '#f9f9f9',
+  border: '1px solid #eee',
+  borderRadius: '8px',
+  padding: '1.2rem',
+  marginBottom: '1rem'
+}
+
+const labelStyle = {
+  display: 'block',
+  fontWeight: '600',
+  marginBottom: '.3rem',
+  color: '#333',
+  fontSize: '.85rem'
+}
+
+const inputStyle = {
+  width: '100%',
+  padding: '.7rem',
+  border: '1px solid #ddd',
+          borderRadius: '6px',
+  fontSize: '1rem',
+  boxSizing: 'border-box',
+  background: 'white'
+}
+
+const addBtnStyle = {
+  width: '100%',
+  padding: '.9rem',
+  background: '#f5f5f5',
+  border: '2px dashed #ddd',
+  borderRadius: '8px',
+  fontSize: '1rem',
+  fontWeight: '600',
+  color: '#666',
+  cursor: 'pointer'
+}
+
+const removeBtnStyle = {
+  padding: '.3rem .8rem',
+  background: 'white',
+  border: '1px solid #ddd',
+  borderRadius: '4px',
+  fontSize: '.8rem',
+  color: '#999',
+  cursor: 'pointer'
+}
