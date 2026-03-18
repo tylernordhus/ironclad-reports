@@ -12,8 +12,11 @@ export async function POST(request) {
 
     const project_name = formData.get('project_name')
     const location = formData.get('location')
-    const gc_name = formData.get('gc_name')
-    const gc_email = formData.get('gc_email')
+    const address = formData.get('address')
+    const client_name = formData.get('client_name')
+    const client_email = formData.get('client_email')
+    const start_date = formData.get('start_date') || null
+    const notes = formData.get('notes')
     const status = formData.get('status')
 
     const { data, error } = await supabase
@@ -21,8 +24,11 @@ export async function POST(request) {
       .insert({
         project_name,
         location,
-        gc_name,
-        gc_email,
+        address,
+        client_name,
+        client_email,
+        start_date,
+        notes,
         status
       })
       .select()
