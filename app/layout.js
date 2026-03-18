@@ -1,6 +1,6 @@
 export const metadata = {
-  title: 'Ironclad Daily Report',
-  description: 'Subcontractor daily reporting tool',
+  title: 'Field Reports',
+  description: 'Construction field reporting tool',
 }
 
 export default function RootLayout({ children }) {
