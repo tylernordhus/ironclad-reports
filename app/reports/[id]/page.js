@@ -48,6 +48,25 @@ export default async function ReportDetail({ params }) {
           <Field label="Equipment Used" value={report.equipment_used} />
           <Field label="Safety / Issues" value={report.safety_issues} />
 
+          {report.photo_urls && report.photo_urls.length > 0 && (
+            <div style={{ marginBottom: '1.2rem', paddingBottom: '1.2rem', borderBottom: '1px solid #f0f0f0' }}>
+              <div style={{ fontSize: '.75rem', fontWeight: '700', color: '#999', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: '.75rem' }}>
+                Photos
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '.75rem' }}>
+                {report.photo_urls.map((url, i) => (
+                  <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                    <img
+                      src={url}
+                      alt={`Photo ${i + 1}`}
+                      style={{ width: '100%', height: '140px', objectFit: 'cover', borderRadius: '6px', display: 'block' }}
+                    />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem', flexWrap: 'wrap' }}>
             <a href={'/api/pdf/' + report.id} style={{
               flex: 1,

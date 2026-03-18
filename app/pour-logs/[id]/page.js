@@ -112,6 +112,23 @@ export default async function PourLogDetail({ params }) {
         ))}
       </div>
 
+      {log.photo_urls && log.photo_urls.length > 0 && (
+        <div style={{ marginBottom: '2rem' }}>
+          <h2 style={{ fontSize: '1.2rem', color: '#1a1a1a', marginBottom: '1rem' }}>Photos</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '.75rem' }}>
+            {log.photo_urls.map((url, i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                <img
+                  src={url}
+                  alt={`Photo ${i + 1}`}
+                  style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px', display: 'block' }}
+                />
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
         <a href={'/api/pour-log/pdf/' + log.id} style={{
           flex: 1,

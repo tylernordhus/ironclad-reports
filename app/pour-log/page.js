@@ -31,6 +31,7 @@ export default function PourLog() {
   ])
 
   const [submitting, setSubmitting] = useState(false)
+  const [photoFiles, setPhotoFiles] = useState([])
 
   const addFoundation = () => {
     setFoundations([...foundations, { foundation_id: '', total_depth: '', estimated_yards: '', notes: '' }])
@@ -91,6 +92,18 @@ export default function PourLog() {
 
     const formData = new FormData(e.target)
 
+    let photo_urls = []
+    if (photoFiles.length > 0) {
+      const fd = new FormData()
+      fd.append('folder', 'pour-logs')
+      photoFiles.forEach(f => fd.append('files', f))
+      const uploadRes = await fetch('/api/upload-photos', { method: 'POST', body: fd })
+      if (uploadRes.ok) {
+        const uploadData = await uploadRes.json()
+        photo_urls = uploadData.urls
+      }
+    }
+
     const payload = {
       project_id,
       project_name: formData.get('project_name'),
@@ -99,6 +112,7 @@ export default function PourLog() {
       ambient_temp: formData.get('ambient_temp'),
       concrete_supplier: formData.get('concrete_supplier'),
       submitted_by: formData.get('submitted_by'),
+      photo_urls,
       foundations,
       trucks: trucks.map(t => ({
         ...t,
@@ -346,6 +360,25 @@ export default function PourLog() {
           <button type="button" onClick={addTruck} style={addBtnStyle}>
             + Add Truck
           </button>
+        </div>
+
+        <div style={sectionStyle}>
+          <div style={sectionHeaderStyle}>Photos</div>
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Attach Photos <span style={{ fontWeight: '400', color: '#888' }}>(optional)</span></label>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              style={{ ...inputStyle, padding: '.5rem', cursor: 'pointer' }}
+              onChange={e => setPhotoFiles(Array.from(e.target.files))}
+            />
+            {photoFiles.length > 0 && (
+              <p style={{ margin: '.4rem 0 0', fontSize: '.8rem', color: '#666' }}>
+                {photoFiles.length} photo{photoFiles.length !== 1 ? 's' : ''} selected
+              </p>
+            )}
+          </div>
         </div>
 
         <button type="submit" disabled={submitting} style={{

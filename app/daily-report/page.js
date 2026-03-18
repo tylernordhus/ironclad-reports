@@ -97,6 +97,21 @@ export default async function DailyReport(props) {
             </label>
             <input name="submitted_by" required style={inputStyle} placeholder="Your name" />
           </div>
+          <div style={{ marginBottom: '1.2rem' }}>
+            <label style={{ display: 'block', fontWeight: '600', marginBottom: '.4rem', color: '#333' }}>
+              Photos <span style={{ fontWeight: '400', color: '#888', fontSize: '.9rem' }}>(optional)</span>
+            </label>
+            <input
+              name="photos"
+              type="file"
+              accept="image/*"
+              multiple
+              style={{ ...inputStyle, padding: '.5rem', cursor: 'pointer' }}
+            />
+            <p style={{ margin: '.3rem 0 0', fontSize: '.8rem', color: '#888' }}>
+              Select one or more photos to attach to this report.
+            </p>
+          </div>
           <button type="submit" style={{
             width: '100%',
             padding: '1rem',

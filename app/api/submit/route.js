@@ -20,6 +20,26 @@ export async function POST(request) {
     const weather = formData.get('weather')
     const submitted_by = formData.get('submitted_by')
 
+    const photoFiles = formData.getAll('photos').filter(f => f && f.size > 0)
+    const photo_urls = []
+    for (const photo of photoFiles) {
+      const bytes = await photo.arrayBuffer()
+      const buffer = Buffer.from(bytes)
+      const safeName = photo.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+      const path = `daily-reports/${Date.now()}_${safeName}`
+      const { error: uploadError } = await supabase.storage
+        .from('report-photos')
+        .upload(path, buffer, { contentType: photo.type })
+      if (!uploadError) {
+        const { data: { publicUrl } } = supabase.storage
+          .from('report-photos')
+          .getPublicUrl(path)
+        photo_urls.push(publicUrl)
+      } else {
+        console.error('Photo upload error:', uploadError)
+      }
+    }
+
     const { error: dbError } = await supabase
       .from('reports')
       .insert({
@@ -31,7 +51,8 @@ export async function POST(request) {
         equipment_used,
         safety_issues,
         weather,
-        submitted_by
+        submitted_by,
+        photo_urls: photo_urls.length > 0 ? photo_urls : null
       })
 
     if (dbError) throw dbError

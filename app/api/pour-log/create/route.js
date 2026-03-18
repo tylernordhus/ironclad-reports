@@ -17,6 +17,7 @@ export async function POST(request) {
       ambient_temp,
       concrete_supplier,
       submitted_by,
+      photo_urls,
       foundations,
       trucks
     } = body
@@ -30,7 +31,8 @@ export async function POST(request) {
         weather,
         ambient_temp,
         concrete_supplier,
-        submitted_by
+        submitted_by,
+        photo_urls: photo_urls && photo_urls.length > 0 ? photo_urls : null
       })
       .select()
       .single()

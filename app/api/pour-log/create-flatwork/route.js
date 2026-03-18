@@ -24,6 +24,7 @@ export async function POST(request) {
       total_yards,
       finish_type,
       general_notes,
+      photo_urls,
       trucks
     } = body
 
@@ -43,7 +44,8 @@ export async function POST(request) {
         thickness,
         total_yards,
         finish_type,
-        general_notes
+        general_notes,
+        photo_urls: photo_urls && photo_urls.length > 0 ? photo_urls : null
       })
       .select()
       .single()
