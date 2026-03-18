@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { NextResponse } from 'next/server'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -34,7 +35,7 @@ export async function POST(request, { params }) {
 
     if (error) throw error
 
-    return Response.redirect(new URL(`/reports/${params.id}`, request.url))
+    return NextResponse.redirect(new URL(`/reports/${params.id}`, request.url), 303)
 
   } catch (err) {
     console.error(err)
