@@ -8,6 +8,12 @@ const supabase = createClient(
 
 export const revalidate = 0
 
+function formatDate(dateStr) {
+  if (!dateStr) return '-'
+  const [year, month, day] = dateStr.split('-')
+  return month + '-' + day + '-' + year
+}
+
 export default async function ReportDetail({ params }) {
   const { data: report, error } = await supabase
     .from('reports')
@@ -23,7 +29,7 @@ export default async function ReportDetail({ params }) {
     <main style={{ maxWidth: '700px', margin: '0 auto', padding: '2rem' }}>
       <div style={{ marginBottom: '1.5rem' }}>
         <Link href="/reports" style={{ color: '#cc3300', textDecoration: 'none', fontSize: '.9rem' }}>
-          ← Back to Reports
+          Back to Reports
         </Link>
       </div>
 
@@ -31,7 +37,7 @@ export default async function ReportDetail({ params }) {
         <div style={{ background: '#cc3300', padding: '1.5rem 2rem' }}>
           <h1 style={{ color: 'white', fontSize: '1.5rem', margin: 0 }}>{report.project_name}</h1>
           <p style={{ color: 'rgba(255,255,255,0.8)', margin: '.4rem 0 0', fontSize: '.9rem' }}>
-            {report.report_date} · Submitted by {report.submitted_by}
+            {formatDate(report.report_date)} · Submitted by {report.submitted_by}
           </p>
         </div>
 
@@ -43,56 +49,47 @@ export default async function ReportDetail({ params }) {
           <Field label="Safety / Issues" value={report.safety_issues} />
 
           <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem', flexWrap: 'wrap' }}>
-            <a
-              href={`/api/pdf/${report.id}`}
-              style={{
-                flex: 1,
-                minWidth: '140px',
-                padding: '.8rem 1rem',
-                background: '#cc3300',
-                color: 'white',
-                borderRadius: '6px',
-                textDecoration: 'none',
-                fontWeight: '600',
-                fontSize: '.9rem',
-                textAlign: 'center'
-              }}
-            >
+            <a href={'/api/pdf/' + report.id} style={{
+              flex: 1,
+              minWidth: '140px',
+              padding: '.8rem 1rem',
+              background: '#cc3300',
+              color: 'white',
+              borderRadius: '6px',
+              textDecoration: 'none',
+              fontWeight: '600',
+              fontSize: '.9rem',
+              textAlign: 'center'
+            }}>
               Download PDF
             </a>
-            <a
-              href={`/api/resend-email/${report.id}`}
-              style={{
-                flex: 1,
-                minWidth: '140px',
-                padding: '.8rem 1rem',
-                background: 'white',
-                color: '#cc3300',
-                border: '2px solid #cc3300',
-                borderRadius: '6px',
-                textDecoration: 'none',
-                fontWeight: '600',
-                fontSize: '.9rem',
-                textAlign: 'center'
-              }}
-            >
-              Resend Email
+            <a href={'/api/resend-email/' + report.id} style={{
+              flex: 1,
+              minWidth: '140px',
+              padding: '.8rem 1rem',
+              background: 'white',
+              color: '#cc3300',
+              border: '2px solid #cc3300',
+              borderRadius: '6px',
+              textDecoration: 'none',
+              fontWeight: '600',
+              fontSize: '.9rem',
+              textAlign: 'center'
+            }}>
+              Send Email
             </a>
-            <Link
-              href={`/reports/${report.id}/edit`}
-              style={{
-                flex: 1,
-                minWidth: '140px',
-                padding: '.8rem 1rem',
-                background: '#1a1a1a',
-                color: 'white',
-                borderRadius: '6px',
-                textDecoration: 'none',
-                fontWeight: '600',
-                fontSize: '.9rem',
-                textAlign: 'center'
-              }}
-            >
+            <Link href={'/reports/' + report.id + '/edit'} style={{
+              flex: 1,
+              minWidth: '140px',
+              padding: '.8rem 1rem',
+              background: '#1a1a1a',
+              color: 'white',
+              borderRadius: '6px',
+              textDecoration: 'none',
+              fontWeight: '600',
+              fontSize: '.9rem',
+              textAlign: 'center'
+            }}>
               Edit Report
             </Link>
           </div>
@@ -109,7 +106,7 @@ function Field({ label, value }) {
         {label}
       </div>
       <div style={{ fontSize: '1rem', color: '#1a1a1a', lineHeight: '1.6' }}>
-        {value || '—'}
+        {value || '-'}
       </div>
     </div>
   )
