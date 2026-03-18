@@ -39,24 +39,50 @@ export default function NewProject() {
             </label>
             <input name="project_name" required style={inputStyle} placeholder="e.g. Wichita Substation" />
           </div>
+
           <div style={{ marginBottom: '1.2rem' }}>
             <label style={{ display: 'block', fontWeight: '600', marginBottom: '.4rem', color: '#333' }}>
-              Location
+              Location / City
             </label>
             <input name="location" required style={inputStyle} placeholder="e.g. Wichita, KS" />
           </div>
+
           <div style={{ marginBottom: '1.2rem' }}>
             <label style={{ display: 'block', fontWeight: '600', marginBottom: '.4rem', color: '#333' }}>
-              GC Name
+              Exact Address <span style={{ fontWeight: '400', color: '#999' }}>(optional)</span>
             </label>
-            <input name="gc_name" required style={inputStyle} placeholder="e.g. Evergy" />
+            <input name="address" style={inputStyle} placeholder="e.g. 1234 Industrial Blvd, Wichita, KS 67201" />
           </div>
+
           <div style={{ marginBottom: '1.2rem' }}>
             <label style={{ display: 'block', fontWeight: '600', marginBottom: '.4rem', color: '#333' }}>
-              GC Email
+              Owner / Client Name
             </label>
-            <input name="gc_email" type="email" required style={inputStyle} placeholder="e.g. pm@evergy.com" />
+            <input name="client_name" required style={inputStyle} placeholder="e.g. Evergy" />
           </div>
+
+          <div style={{ marginBottom: '1.2rem' }}>
+            <label style={{ display: 'block', fontWeight: '600', marginBottom: '.4rem', color: '#333' }}>
+              Owner / Client Email
+            </label>
+            <input name="client_email" type="email" required style={inputStyle} placeholder="e.g. pm@evergy.com" />
+          </div>
+
+          <div style={{ marginBottom: '1.2rem' }}>
+            <label style={{ display: 'block', fontWeight: '600', marginBottom: '.4rem', color: '#333' }}>
+              Start Date
+            </label>
+            <input name="start_date" type="date" style={inputStyle} />
+          </div>
+
+          <div style={{ marginBottom: '1.2rem' }}>
+            <label style={{ display: 'block', fontWeight: '600', marginBottom: '.4rem', color: '#333' }}>
+              Notes <span style={{ fontWeight: '400', color: '#999' }}>(optional)</span>
+            </label>
+            <textarea name="notes" rows={3} style={{ ...inputStyle, resize: 'vertical' }}
+              placeholder="Any additional project details..." />
+          </div>
+
           <div style={{ marginBottom: '1.2rem' }}>
             <label style={{ display: 'block', fontWeight: '600', marginBottom: '.4rem', color: '#333' }}>
               Status
@@ -67,6 +93,7 @@ export default function NewProject() {
               <option value="on hold">On Hold</option>
             </select>
           </div>
+
           <button type="submit" style={{
             width: '100%',
             padding: '1rem',
