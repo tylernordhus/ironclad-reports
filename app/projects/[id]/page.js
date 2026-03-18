@@ -111,7 +111,7 @@ export default async function ProjectDetail({ params }) {
         }}>
           + Daily Report
         </Link>
-        <Link href={'/pour-log?project_id=' + project.id + '&project_name=' + encodeURIComponent(project.project_name)} style={{
+        <Link href={'/pour-log-select?project_id=' + project.id + '&project_name=' + encodeURIComponent(project.project_name)} style={{
           flex: 1,
           minWidth: '140px',
           padding: '.8rem 1rem',
@@ -215,7 +215,7 @@ export default async function ProjectDetail({ params }) {
                   {log.log_date}
                 </div>
                 <div style={{ color: '#666', fontSize: '.85rem' }}>
-                  Drilled Shaft - {log.submitted_by}
+                  {log.log_type === 'flatwork' ? 'Flatwork' : 'Drilled Shaft'} - {log.submitted_by}
                 </div>
               </div>
               <div style={{ color: '#1a1a1a', fontSize: '1.2rem' }}>→</div>
@@ -223,7 +223,6 @@ export default async function ProjectDetail({ params }) {
           </Link>
         ))}
       </div>
-
     </main>
   )
 }
