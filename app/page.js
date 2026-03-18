@@ -88,6 +88,18 @@ export default function Home() {
             Submit Daily Report
           </button>
         </form>
+
+        <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
+          <a href="/reports" style={{
+            color: '#cc3300',
+            textDecoration: 'none',
+            fontSize: '.9rem',
+            fontWeight: '600'
+          }}>
+            View All Reports →
+          </a>
+        </div>
+
       </div>
     </main>
   )
