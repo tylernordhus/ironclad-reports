@@ -10,6 +10,7 @@ export async function POST(request) {
   try {
     const formData = await request.formData()
 
+    const project_id = formData.get('project_id') || null
     const project_name = formData.get('project_name')
     const report_date = formData.get('report_date')
     const crew_count = parseInt(formData.get('crew_count'))
@@ -22,6 +23,7 @@ export async function POST(request) {
     const { error: dbError } = await supabase
       .from('reports')
       .insert({
+        project_id,
         project_name,
         report_date,
         crew_count,
@@ -34,7 +36,11 @@ export async function POST(request) {
 
     if (dbError) throw dbError
 
-    return NextResponse.redirect(new URL('/success', request.url), 303)
+    const redirectTo = project_id
+      ? `/projects/${project_id}`
+      : '/success'
+
+    return NextResponse.redirect(new URL(redirectTo, request.url), 303)
 
   } catch (err) {
     console.error(err)
