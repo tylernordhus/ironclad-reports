@@ -8,6 +8,21 @@ const supabase = createClient(
 
 export const revalidate = 0
 
+function formatDate(dateStr) {
+  if (!dateStr) return '-'
+  const [year, month, day] = dateStr.split('-')
+  return month + '-' + day + '-' + year
+}
+
+function formatTime(time) {
+  if (!time) return '-'
+  const [hourStr, minute] = time.split(':')
+  const hour = parseInt(hourStr)
+  const ampm = hour >= 12 ? 'PM' : 'AM'
+  const hour12 = hour % 12 || 12
+  return hour12 + ':' + minute + ' ' + ampm
+}
+
 export default async function PourLogDetail({ params }) {
   const { data: log, error } = await supabase
     .from('pour_logs')
@@ -42,7 +57,7 @@ export default async function PourLogDetail({ params }) {
         <div style={{ background: '#1a1a1a', padding: '1.5rem 2rem' }}>
           <h1 style={{ color: 'white', fontSize: '1.5rem', margin: 0 }}>Drilled Shaft Pour Log</h1>
           <p style={{ color: 'rgba(255,255,255,0.7)', margin: '.4rem 0 0', fontSize: '.9rem' }}>
-            {log.project_name} - {log.log_date}
+            {log.project_name} - {formatDate(log.log_date)}
           </p>
         </div>
 
@@ -76,9 +91,9 @@ export default async function PourLogDetail({ params }) {
           <div key={i} style={{ background: 'white', borderRadius: '8px', padding: '1.2rem 1.5rem', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
             <div style={{ fontWeight: '700', fontSize: '1.1rem', color: '#1a1a1a', marginBottom: '.75rem' }}>Truck {t.truck_number}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '.75rem' }}>
-              <Field label="Arrival" value={t.arrival_time} />
-              <Field label="Pour Start" value={t.pour_start} />
-              <Field label="Pour Complete" value={t.pour_complete} />
+              <Field label="Arrival" value={formatTime(t.arrival_time)} />
+              <Field label="Pour Start" value={formatTime(t.pour_start)} />
+              <Field label="Pour Complete" value={formatTime(t.pour_complete)} />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '.75rem' }}>
               <Field label="Yards" value={t.yards} />
