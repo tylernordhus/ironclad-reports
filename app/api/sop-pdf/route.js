@@ -581,7 +581,7 @@ export async function GET() {
   for (const flow of flows) {
     if (y < 80) break
     p9.drawRectangle({ x: MARGIN, y: y - 12, width: PAGE_W - MARGIN * 2, height: 20, color: LIGHT_GRAY })
-    const flowText = [flow.from, flow.to, flow.end].filter(Boolean).join('  →  ')
+    const flowText = [flow.from, flow.to, flow.end].filter(Boolean).join('  ->  ')
     p9.drawText(flowText, { x: MARGIN + 8, y: y - 4, size: 8.5, font, color: BLACK })
     y -= 26
   }
