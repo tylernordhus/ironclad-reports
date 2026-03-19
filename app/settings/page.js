@@ -78,6 +78,20 @@ export default async function SettingsPage() {
             Save Settings
           </button>
         </form>
+
+        <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid #f0f0f0', textAlign: 'center' }}>
+          <a href="/api/sop-pdf" style={{
+            display: 'inline-block', padding: '.75rem 1.5rem',
+            background: '#1a1a1a', color: 'white',
+            borderRadius: '6px', textDecoration: 'none',
+            fontWeight: '600', fontSize: '.9rem'
+          }}>
+            Download App SOP (PDF)
+          </a>
+          <p style={{ color: '#999', fontSize: '.8rem', marginTop: '.5rem' }}>
+            Step-by-step instructions for using this app
+          </p>
+        </div>
       </div>
     </main>
   )

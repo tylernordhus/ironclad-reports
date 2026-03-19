@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
+import DeleteButton from '@/app/components/DeleteButton'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -115,11 +116,12 @@ export default async function ContractorEvalDetail({ params }) {
 
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '1rem' }}>
         <a href={`/api/contractor-eval/pdf/${eval_.id}`} style={btnStyle('#cc3300', 'white')}>Download PDF</a>
-        <form action={`/api/delete/contractor-eval/${eval_.id}`} method="POST" style={{ flex: 1 }}>
-          <button type="submit" style={{ ...btnStyle('white', '#cc3300'), width: '100%', border: '2px solid #cc3300', cursor: 'pointer' }}>
-            Delete Evaluation
-          </button>
-        </form>
+        <Link href={`/contractor-evals/${eval_.id}/edit`} style={btnStyle('#1a1a1a', 'white')}>Edit Evaluation</Link>
+        <DeleteButton
+          action={`/api/delete/contractor-eval/${eval_.id}`}
+          label="Delete Evaluation"
+          style={{ ...btnStyle('white', '#cc3300'), border: '2px solid #cc3300', cursor: 'pointer', width: '100%' }}
+        />
       </div>
     </main>
   )

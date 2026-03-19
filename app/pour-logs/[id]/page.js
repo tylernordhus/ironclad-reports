@@ -144,21 +144,6 @@ export default async function PourLogDetail({ params }) {
         }}>
           Download PDF
         </a>
-        <a href={'/api/pour-log/send-email/' + log.id} style={{
-          flex: 1,
-          minWidth: '140px',
-          padding: '.8rem 1rem',
-          background: 'white',
-          color: '#1a1a1a',
-          border: '2px solid #1a1a1a',
-          borderRadius: '6px',
-          textDecoration: 'none',
-          fontWeight: '600',
-          fontSize: '.9rem',
-          textAlign: 'center'
-        }}>
-          Send Email
-        </a>
         <Link href={'/pour-logs/' + log.id + '/edit'} style={{
           flex: 1,
           minWidth: '140px',

@@ -82,21 +82,6 @@ export default async function ReportDetail({ params }) {
             }}>
               Download PDF
             </a>
-            <a href={'/api/resend-email/' + report.id} style={{
-              flex: 1,
-              minWidth: '140px',
-              padding: '.8rem 1rem',
-              background: 'white',
-              color: '#cc3300',
-              border: '2px solid #cc3300',
-              borderRadius: '6px',
-              textDecoration: 'none',
-              fontWeight: '600',
-              fontSize: '.9rem',
-              textAlign: 'center'
-            }}>
-              Send Email
-            </a>
             <Link href={'/reports/' + report.id + '/edit'} style={{
               flex: 1,
               minWidth: '140px',
