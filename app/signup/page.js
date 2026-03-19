@@ -90,7 +90,7 @@ export default function SignupPage() {
       }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <h1 style={{ color: '#cc3300', fontSize: '1.8rem', margin: '0 0 .4rem' }}>
-            Ironclad Reports
+            Inspector Gadget
           </h1>
           <p style={{ color: '#666', fontSize: '.95rem', margin: 0 }}>
             Create your account
