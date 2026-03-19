@@ -1,7 +1,9 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createSupabase } from '@supabase/supabase-js'
+import { createClient as createAuthClient } from '@/lib/supabase-server'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
 
-const supabase = createClient(
+const supabase = createSupabase(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SECRET_KEY
 )
@@ -9,6 +11,10 @@ const supabase = createClient(
 export const revalidate = 0
 
 export default async function Home() {
+  const auth = await createAuthClient()
+  const { data: { user } } = await auth.auth.getUser()
+  if (!user) redirect('/login')
+
   const { data: settings } = await supabase
     .from('settings')
     .select('company_name')

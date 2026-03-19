@@ -159,6 +159,20 @@ export default async function PourLogDetail({ params }) {
         }}>
           Send Email
         </a>
+        <Link href={'/pour-logs/' + log.id + '/edit'} style={{
+          flex: 1,
+          minWidth: '140px',
+          padding: '.8rem 1rem',
+          background: '#cc3300',
+          color: 'white',
+          borderRadius: '6px',
+          textDecoration: 'none',
+          fontWeight: '600',
+          fontSize: '.9rem',
+          textAlign: 'center'
+        }}>
+          Edit Log
+        </Link>
       </div>
     </main>
   )

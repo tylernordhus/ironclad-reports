@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+import sharp from 'sharp'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -24,12 +25,22 @@ export async function POST(request) {
     const photo_urls = []
     for (const photo of photoFiles) {
       const bytes = await photo.arrayBuffer()
-      const buffer = Buffer.from(bytes)
-      const safeName = photo.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+      let buffer = Buffer.from(bytes)
+      let safeName = photo.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+      let contentType = photo.type
+
+      const isHeic = safeName.toLowerCase().endsWith('.heic') ||
+        safeName.toLowerCase().endsWith('.heif')
+      if (isHeic) {
+        buffer = await sharp(buffer).jpeg({ quality: 85 }).toBuffer()
+        safeName = safeName.replace(/\.(heic|heif)$/i, '.jpg')
+        contentType = 'image/jpeg'
+      }
+
       const path = `daily-reports/${Date.now()}_${safeName}`
       const { error: uploadError } = await supabase.storage
         .from('report-photos')
-        .upload(path, buffer, { contentType: photo.type })
+        .upload(path, buffer, { contentType })
       if (!uploadError) {
         const { data: { publicUrl } } = supabase.storage
           .from('report-photos')

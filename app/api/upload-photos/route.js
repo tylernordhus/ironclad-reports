@@ -1,9 +1,23 @@
 import { createClient } from '@supabase/supabase-js'
+import sharp from 'sharp'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SECRET_KEY
 )
+
+async function processImage(buffer, filename) {
+  const isHeic = filename.toLowerCase().endsWith('.heic') ||
+    filename.toLowerCase().endsWith('.heif')
+
+  if (isHeic) {
+    const converted = await sharp(buffer).jpeg({ quality: 85 }).toBuffer()
+    const newName = filename.replace(/\.(heic|heif)$/i, '.jpg')
+    return { buffer: converted, filename: newName, contentType: 'image/jpeg' }
+  }
+
+  return { buffer, filename, contentType: 'image/jpeg' }
+}
 
 export async function POST(request) {
   try {
@@ -15,13 +29,15 @@ export async function POST(request) {
 
     for (const file of files) {
       const bytes = await file.arrayBuffer()
-      const buffer = Buffer.from(bytes)
+      const rawBuffer = Buffer.from(bytes)
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-      const path = `${folder}/${Date.now()}_${safeName}`
+
+      const { buffer, filename, contentType } = await processImage(rawBuffer, safeName)
+      const path = `${folder}/${Date.now()}_${filename}`
 
       const { error } = await supabase.storage
         .from('report-photos')
-        .upload(path, buffer, { contentType: file.type })
+        .upload(path, buffer, { contentType })
 
       if (!error) {
         const { data: { publicUrl } } = supabase.storage
