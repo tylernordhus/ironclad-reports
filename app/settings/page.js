@@ -79,65 +79,11 @@ export default async function SettingsPage() {
           </button>
         </form>
 
-        <div id="screenshots" style={{ marginTop: '2.5rem', paddingTop: '2rem', borderTop: '2px solid #f0f0f0' }}>
-          <h2 style={{ fontSize: '1.2rem', color: '#1a1a1a', marginBottom: '.4rem' }}>SOP Screenshots</h2>
-          <p style={{ color: '#666', fontSize: '.85rem', marginBottom: '1.5rem' }}>
-            Upload a screenshot for each section of the SOP PDF. Take a screenshot on your phone or computer, then upload it here. Once uploaded it will appear in the PDF automatically.
-          </p>
-
-          {[
-            { slot: 'login', label: 'Login Screen', hint: 'Screenshot of the Inspector Gadget login page' },
-            { slot: 'home', label: 'Home Screen', hint: 'Screenshot of the main home screen with all cards' },
-            { slot: 'projects', label: 'Projects List', hint: 'Screenshot of the projects list page' },
-            { slot: 'daily-report', label: 'Daily Report Form', hint: 'Screenshot of the daily report form' },
-            { slot: 'pour-log', label: 'Pour Log Form', hint: 'Screenshot of the pour log form' },
-            { slot: 'reports', label: 'All Reports Page', hint: 'Screenshot of the view all reports page' },
-          ].map(({ slot, label, hint }) => {
-            const url = supabase.storage.from('report-photos').getPublicUrl(`sop-screenshots/${slot}.jpg`).data.publicUrl
-            return (
-              <div key={slot} style={{ marginBottom: '1.5rem', padding: '1rem', border: '1px solid #e5e5e5', borderRadius: '8px' }}>
-                <div style={{ fontWeight: '600', fontSize: '.95rem', color: '#1a1a1a', marginBottom: '.2rem' }}>{label}</div>
-                <div style={{ color: '#888', fontSize: '.8rem', marginBottom: '.75rem' }}>{hint}</div>
-                <ScreenshotPreview url={url} />
-                <form action="/api/sop-screenshots/upload" method="POST" encType="multipart/form-data" style={{ marginTop: '.75rem', display: 'flex', gap: '.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <input type="hidden" name="slot" value={slot} />
-                  <input type="file" name="file" accept="image/*" required style={{ flex: 1, fontSize: '.85rem' }} />
-                  <button type="submit" style={{ padding: '.5rem 1rem', background: '#1a1a1a', color: 'white', border: 'none', borderRadius: '6px', fontSize: '.85rem', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                    Upload
-                  </button>
-                </form>
-              </div>
-            )
-          })}
-        </div>
-
-        <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #f0f0f0', textAlign: 'center' }}>
-          <a href="/api/sop-pdf" style={{
-            display: 'inline-block', padding: '.75rem 1.5rem',
-            background: '#cc3300', color: 'white',
-            borderRadius: '6px', textDecoration: 'none',
-            fontWeight: '600', fontSize: '.9rem'
-          }}>
-            Download App SOP (PDF)
-          </a>
-          <p style={{ color: '#999', fontSize: '.8rem', marginTop: '.5rem' }}>
-            Step-by-step instructions for using this app
-          </p>
-        </div>
       </div>
     </main>
   )
 }
 
-async function ScreenshotPreview({ url }) {
-  try {
-    const res = await fetch(url, { method: 'HEAD' })
-    if (!res.ok) throw new Error()
-    return <img src={url} alt="Current screenshot" style={{ width: '100%', maxHeight: '160px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #e5e5e5' }} />
-  } catch {
-    return <div style={{ background: '#f5f5f5', borderRadius: '4px', padding: '1rem', textAlign: 'center', color: '#aaa', fontSize: '.8rem' }}>No screenshot uploaded yet</div>
-  }
-}
 
 const labelStyle = { display: 'block', fontWeight: '600', marginBottom: '.4rem', color: '#333' }
 const inputStyle = { width: '100%', padding: '.75rem', border: '1px solid #ddd', borderRadius: '6px', fontSize: '1rem', boxSizing: 'border-box' }
