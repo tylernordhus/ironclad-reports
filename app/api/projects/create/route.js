@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+import { getUserId } from '@/lib/get-user-id'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -9,6 +10,7 @@ const supabase = createClient(
 export async function POST(request) {
   try {
     const formData = await request.formData()
+    const user_id = await getUserId()
 
     const project_name = formData.get('project_name')
     const location = formData.get('location')
@@ -29,7 +31,8 @@ export async function POST(request) {
         client_email,
         start_date,
         notes,
-        status
+        status,
+        user_id
       })
       .select()
       .single()

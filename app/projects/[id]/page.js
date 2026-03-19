@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
+import { getUserId } from '@/lib/get-user-id'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -9,10 +10,13 @@ const supabase = createClient(
 export const revalidate = 0
 
 export default async function ProjectDetail({ params }) {
+  const user_id = await getUserId()
+
   const { data: project, error } = await supabase
     .from('projects')
     .select('*')
     .eq('id', params.id)
+    .eq('user_id', user_id)
     .single()
 
   if (error || !project) {
@@ -23,18 +27,21 @@ export default async function ProjectDetail({ params }) {
     .from('reports')
     .select('*')
     .eq('project_id', project.id)
+    .eq('user_id', user_id)
     .order('report_date', { ascending: false })
 
   const { data: pourLogs } = await supabase
     .from('pour_logs')
     .select('*')
     .eq('project_id', project.id)
+    .eq('user_id', user_id)
     .order('log_date', { ascending: false })
 
   const { data: contractorEvals } = await supabase
     .from('contractor_evaluations')
     .select('*')
     .eq('project_id', project.id)
+    .eq('user_id', user_id)
     .order('inspection_date', { ascending: false })
 
   return (

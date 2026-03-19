@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 import DeleteButton from '@/app/components/DeleteButton'
+import { getUserId } from '@/lib/get-user-id'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -16,16 +17,18 @@ function formatDate(dateStr) {
 }
 
 export default async function ReportsPage() {
+  const user_id = await getUserId()
+
   const [
     { data: projects },
     { data: reports },
     { data: pourLogs },
     { data: contractorEvals }
   ] = await Promise.all([
-    supabase.from('projects').select('*').order('project_name', { ascending: true }),
-    supabase.from('reports').select('*').order('report_date', { ascending: false }),
-    supabase.from('pour_logs').select('*').order('log_date', { ascending: false }),
-    supabase.from('contractor_evaluations').select('*').order('inspection_date', { ascending: false })
+    supabase.from('projects').select('*').eq('user_id', user_id).order('project_name', { ascending: true }),
+    supabase.from('reports').select('*').eq('user_id', user_id).order('report_date', { ascending: false }),
+    supabase.from('pour_logs').select('*').eq('user_id', user_id).order('log_date', { ascending: false }),
+    supabase.from('contractor_evaluations').select('*').eq('user_id', user_id).order('inspection_date', { ascending: false })
   ])
 
   const reportsByProject = {}

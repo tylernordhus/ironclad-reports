@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import sharp from 'sharp'
+import { getUserId } from '@/lib/get-user-id'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -10,6 +11,7 @@ const supabase = createClient(
 export async function POST(request) {
   try {
     const formData = await request.formData()
+    const user_id = await getUserId()
 
     const project_id = formData.get('project_id') || null
     const project_name = formData.get('project_name')
@@ -63,7 +65,8 @@ export async function POST(request) {
         safety_issues,
         weather,
         submitted_by,
-        photo_urls: photo_urls.length > 0 ? photo_urls : null
+        photo_urls: photo_urls.length > 0 ? photo_urls : null,
+        user_id
       })
 
     if (dbError) throw dbError

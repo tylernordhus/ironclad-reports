@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { getUserId } from '@/lib/get-user-id'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -7,6 +8,7 @@ const supabase = createClient(
 
 export async function POST(request) {
   try {
+    const user_id = await getUserId()
     const body = await request.json()
 
     const {
@@ -45,7 +47,8 @@ export async function POST(request) {
         total_yards,
         finish_type,
         general_notes,
-        photo_urls: photo_urls && photo_urls.length > 0 ? photo_urls : null
+        photo_urls: photo_urls && photo_urls.length > 0 ? photo_urls : null,
+        user_id
       })
       .select()
       .single()

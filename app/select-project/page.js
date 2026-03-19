@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { getUserId } from '@/lib/get-user-id'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -29,9 +30,12 @@ export default async function SelectProjectPage(props) {
     redirect('/')
   }
 
+  const user_id = await getUserId()
+
   const { data: projects } = await supabase
     .from('projects')
     .select('id, project_name')
+    .eq('user_id', user_id)
     .order('project_name', { ascending: true })
 
   const formLabel = FORM_LABELS[forForm]

@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
+import { getUserId } from '@/lib/get-user-id'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -9,9 +10,12 @@ const supabase = createClient(
 export const revalidate = 0
 
 export default async function ProjectsPage() {
+  const user_id = await getUserId()
+
   const { data: projects, error } = await supabase
     .from('projects')
     .select('*')
+    .eq('user_id', user_id)
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -49,7 +53,6 @@ export default async function ProjectsPage() {
           textAlign: 'center',
           color: '#666'
         }}>
-          <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📁</div>
           <p>No projects yet. Create your first project to get started.</p>
         </div>
       )}

@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+import { getUserId } from '@/lib/get-user-id'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -15,6 +16,7 @@ function toBool(val) {
 export async function POST(request) {
   try {
     const formData = await request.formData()
+    const user_id = await getUserId()
     const f = (name) => formData.get(name)
 
     const { error } = await supabase.from('contractor_evaluations').insert({
@@ -49,6 +51,7 @@ export async function POST(request) {
       overall_comments: f('overall_comments'),
       inspector_signature: f('inspector_signature'),
       signature_date: f('signature_date') || null,
+      user_id,
     })
 
     if (error) throw error
