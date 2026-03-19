@@ -1,7 +1,11 @@
+import { redirect } from 'next/navigation'
+
 export default async function ContractorEvalPage(props) {
   const searchParams = await props.searchParams
   const project_name = searchParams?.project_name || ''
   const project_id = searchParams?.project_id || ''
+
+  if (!project_id) redirect('/select-project?for=contractor-eval')
 
   return (
     <main style={{ maxWidth: '680px', margin: '0 auto', padding: '1.5rem' }}>

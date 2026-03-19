@@ -1,12 +1,17 @@
 'use client'
 
-import { useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 
 export default function PourLogFlatwork() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const project_name = searchParams.get('project_name') || ''
   const project_id = searchParams.get('project_id') || ''
+
+  useEffect(() => {
+    if (!project_id) router.replace('/select-project?for=pour-log-flatwork')
+  }, [project_id, router])
 
   const [trucks, setTrucks] = useState([
     {

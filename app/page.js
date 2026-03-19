@@ -53,7 +53,7 @@ export default async function Home() {
             </div>
           </Link>
 
-          <Link href="/daily-report" style={{ textDecoration: 'none' }}>
+          <Link href="/select-project?for=daily-report" style={{ textDecoration: 'none' }}>
             <div style={{ background: '#1a1a1a', borderRadius: '10px', padding: '2rem', color: 'white', cursor: 'pointer' }}>
               <div style={{ fontSize: '2rem', marginBottom: '.5rem' }}>📋</div>
               <div style={{ fontSize: '1.3rem', fontWeight: '700', marginBottom: '.4rem' }}>Daily Report</div>
@@ -61,7 +61,7 @@ export default async function Home() {
             </div>
           </Link>
 
-          <Link href="/pour-log" style={{ textDecoration: 'none' }}>
+          <Link href="/select-project?for=pour-log" style={{ textDecoration: 'none' }}>
             <div style={{ background: '#1a1a1a', borderRadius: '10px', padding: '2rem', color: 'white', cursor: 'pointer' }}>
               <div style={{ fontSize: '2rem', marginBottom: '.5rem' }}>🪣</div>
               <div style={{ fontSize: '1.3rem', fontWeight: '700', marginBottom: '.4rem' }}>Pour Log</div>
@@ -69,7 +69,7 @@ export default async function Home() {
             </div>
           </Link>
 
-          <Link href="/contractor-eval" style={{ textDecoration: 'none' }}>
+          <Link href="/select-project?for=contractor-eval" style={{ textDecoration: 'none' }}>
             <div style={{ background: '#1a1a1a', borderRadius: '10px', padding: '2rem', color: 'white', cursor: 'pointer' }}>
               <div style={{ fontSize: '2rem', marginBottom: '.5rem' }}>📋</div>
               <div style={{ fontSize: '1.3rem', fontWeight: '700', marginBottom: '.4rem' }}>Contractor Evaluation</div>

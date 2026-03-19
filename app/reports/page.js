@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
+import DeleteButton from '@/app/components/DeleteButton'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -169,9 +170,7 @@ function EvalRow({ eval_, isLast }) {
       </Link>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
         <Link href={`/contractor-evals/${eval_.id}`} style={{ color: '#2a7a2a', fontSize: '.85rem', textDecoration: 'none', fontWeight: '600' }}>View</Link>
-        <form action={`/api/delete/contractor-eval/${eval_.id}`} method="POST">
-          <button type="submit" style={{ background: 'none', border: 'none', color: '#ccc', fontSize: '.85rem', cursor: 'pointer', padding: 0 }}>Delete</button>
-        </form>
+        <DeleteButton action={`/api/delete/contractor-eval/${eval_.id}`} label="Delete" style={{ background: 'none', border: 'none', color: '#ccc', fontSize: '.85rem', cursor: 'pointer', padding: 0 }} />
       </div>
     </div>
   )
@@ -212,11 +211,7 @@ function ReportRow({ report, isLast }) {
       </Link>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
         <Link href={`/reports/${report.id}`} style={{ color: '#cc3300', fontSize: '.85rem', textDecoration: 'none', fontWeight: '600' }}>View</Link>
-        <form action={`/api/delete/report/${report.id}`} method="POST" onSubmit="return confirm('Delete this report?')">
-          <button type="submit" style={{ background: 'none', border: 'none', color: '#ccc', fontSize: '.85rem', cursor: 'pointer', padding: 0 }}>
-            Delete
-          </button>
-        </form>
+        <DeleteButton action={`/api/delete/report/${report.id}`} label="Delete" style={{ background: 'none', border: 'none', color: '#ccc', fontSize: '.85rem', cursor: 'pointer', padding: 0 }} />
       </div>
     </div>
   )
@@ -258,11 +253,7 @@ function PourLogRow({ log, isLast }) {
       </Link>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
         <Link href={`/pour-logs/${log.id}`} style={{ color: '#1a4acc', fontSize: '.85rem', textDecoration: 'none', fontWeight: '600' }}>View</Link>
-        <form action={`/api/delete/pour-log/${log.id}`} method="POST">
-          <button type="submit" style={{ background: 'none', border: 'none', color: '#ccc', fontSize: '.85rem', cursor: 'pointer', padding: 0 }}>
-            Delete
-          </button>
-        </form>
+        <DeleteButton action={`/api/delete/pour-log/${log.id}`} label="Delete" style={{ background: 'none', border: 'none', color: '#ccc', fontSize: '.85rem', cursor: 'pointer', padding: 0 }} />
       </div>
     </div>
   )

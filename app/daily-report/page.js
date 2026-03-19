@@ -1,7 +1,11 @@
+import { redirect } from 'next/navigation'
+
 export default async function DailyReport(props) {
   const searchParams = await props.searchParams
   const project_name = searchParams?.project_name || ''
   const project_id = searchParams?.project_id || ''
+
+  if (!project_id) redirect('/select-project?for=daily-report')
 
   return (
     <main style={{
