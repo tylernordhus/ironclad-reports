@@ -51,7 +51,10 @@ export async function POST(request) {
       signature_date: f('signature_date') || null,
     })
 
-    if (error) throw error
+    if (error) {
+      console.error('Supabase insert error:', error)
+      return new Response('Database error: ' + error.message, { status: 500 })
+    }
 
     const project_id = f('project_id')
     return NextResponse.redirect(
@@ -60,6 +63,6 @@ export async function POST(request) {
     )
   } catch (err) {
     console.error(err)
-    return new Response('Something went wrong.', { status: 500 })
+    return new Response('Something went wrong: ' + err.message, { status: 500 })
   }
 }
