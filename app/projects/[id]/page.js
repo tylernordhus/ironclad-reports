@@ -31,6 +31,12 @@ export default async function ProjectDetail({ params }) {
     .eq('project_id', project.id)
     .order('log_date', { ascending: false })
 
+  const { data: contractorEvals } = await supabase
+    .from('contractor_evaluations')
+    .select('*')
+    .eq('project_id', project.id)
+    .order('inspection_date', { ascending: false })
+
   return (
     <main style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem' }}>
       <div style={{ marginBottom: '1.5rem' }}>
@@ -124,6 +130,20 @@ export default async function ProjectDetail({ params }) {
           textAlign: 'center'
         }}>
           + Pour Log
+        </Link>
+        <Link href={'/contractor-eval?project_id=' + project.id + '&project_name=' + encodeURIComponent(project.project_name)} style={{
+          flex: 1,
+          minWidth: '140px',
+          padding: '.8rem 1rem',
+          background: '#2a7a2a',
+          color: 'white',
+          borderRadius: '6px',
+          textDecoration: 'none',
+          fontWeight: '600',
+          fontSize: '.9rem',
+          textAlign: 'center'
+        }}>
+          + Contractor Eval
         </Link>
         <Link href={'/projects/' + project.id + '/edit'} style={{
           flex: 1,
@@ -219,6 +239,47 @@ export default async function ProjectDetail({ params }) {
                 </div>
               </div>
               <div style={{ color: '#1a1a1a', fontSize: '1.2rem' }}>→</div>
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      <h2 style={{ fontSize: '1.2rem', color: '#1a1a1a', marginBottom: '1rem' }}>Contractor Evaluations</h2>
+
+      {(!contractorEvals || contractorEvals.length === 0) && (
+        <div style={{
+          background: 'white',
+          borderRadius: '8px',
+          padding: '2rem',
+          textAlign: 'center',
+          color: '#666',
+          marginBottom: '1rem'
+        }}>
+          No contractor evaluations yet for this project.
+        </div>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+        {contractorEvals && contractorEvals.map((ev) => (
+          <Link key={ev.id} href={'/contractor-evals/' + ev.id} style={{ textDecoration: 'none' }}>
+            <div style={{
+              background: 'white',
+              border: '1px solid #e5e5e5',
+              borderRadius: '8px',
+              padding: '1.2rem 1.5rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div>
+                <div style={{ fontWeight: '700', color: '#1a1a1a', fontSize: '1rem', marginBottom: '.25rem' }}>
+                  {ev.inspection_date}
+                </div>
+                <div style={{ color: '#666', fontSize: '.85rem' }}>
+                  {ev.contractor_name || ev.inspector_name || '-'}{ev.overall_rating ? ' · ' + ev.overall_rating : ''}
+                </div>
+              </div>
+              <div style={{ color: '#2a7a2a', fontSize: '1.2rem' }}>→</div>
             </div>
           </Link>
         ))}
