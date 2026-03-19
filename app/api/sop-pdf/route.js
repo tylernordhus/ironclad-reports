@@ -19,6 +19,27 @@ const PAGE_W = 612
 const PAGE_H = 792
 const MARGIN = 50
 
+async function fetchScreenshot(pdfDoc, slot) {
+  try {
+    const { data: { publicUrl } } = supabase.storage.from('report-photos').getPublicUrl(`sop-screenshots/${slot}.jpg`)
+    const res = await fetch(publicUrl)
+    if (!res.ok) return null
+    const bytes = new Uint8Array(await res.arrayBuffer())
+    try { return await pdfDoc.embedJpg(bytes) } catch { return await pdfDoc.embedPng(bytes) }
+  } catch {
+    return null
+  }
+}
+
+function drawScreenshot(page, img, x, y, maxW, maxH) {
+  if (!img) return
+  const { width: iw, height: ih } = img.scale(1)
+  const scale = Math.min(maxW / iw, maxH / ih, 1)
+  const w = iw * scale
+  const h = ih * scale
+  page.drawImage(img, { x: x + (maxW - w) / 2, y: y - h, width: w, height: h })
+}
+
 export async function GET() {
   const { data: settings } = await supabase.from('settings').select('company_name, logo_url').single()
   const companyName = settings?.company_name || 'Ironclad Construction'
@@ -27,6 +48,16 @@ export async function GET() {
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
   const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
   const oblique = await pdfDoc.embedFont(StandardFonts.HelveticaOblique)
+
+  // Pre-fetch all screenshots in parallel
+  const [ssLogin, ssHome, ssProjects, ssDailyReport, ssPourLog, ssReports] = await Promise.all([
+    fetchScreenshot(pdfDoc, 'login'),
+    fetchScreenshot(pdfDoc, 'home'),
+    fetchScreenshot(pdfDoc, 'projects'),
+    fetchScreenshot(pdfDoc, 'daily-report'),
+    fetchScreenshot(pdfDoc, 'pour-log'),
+    fetchScreenshot(pdfDoc, 'reports'),
+  ])
 
   // Logo embedding
   let logoImg = null
@@ -118,11 +149,21 @@ export async function GET() {
     return y - 30
   }
 
-  function imageBox(page, y, label, h) {
+  function imageBox(page, y, label, h, img) {
     const bh = h || 110
-    page.drawRectangle({ x: MARGIN, y: y - bh, width: PAGE_W - MARGIN * 2, height: bh, borderColor: MID_GRAY, borderWidth: 1, color: rgb(0.97, 0.97, 0.97) })
-    const lw = font.widthOfTextAtSize('[  ' + label + '  ]', 9)
-    page.drawText('[  ' + label + '  ]', { x: PAGE_W / 2 - lw / 2, y: y - bh / 2 - 4, size: 9, font: oblique, color: MID_GRAY })
+    const boxW = PAGE_W - MARGIN * 2
+    if (img) {
+      const { width: iw, height: ih } = img.scale(1)
+      const scale = Math.min(boxW / iw, bh / ih, 1)
+      const w = iw * scale
+      const rh = ih * scale
+      page.drawRectangle({ x: MARGIN, y: y - rh - 4, width: boxW, height: rh + 4, borderColor: LIGHT_GRAY, borderWidth: 1, color: rgb(1, 1, 1) })
+      page.drawImage(img, { x: MARGIN + (boxW - w) / 2, y: y - rh, width: w, height: rh })
+      return y - rh - 14
+    }
+    page.drawRectangle({ x: MARGIN, y: y - bh, width: boxW, height: bh, borderColor: MID_GRAY, borderWidth: 1, color: rgb(0.97, 0.97, 0.97) })
+    const lw = font.widthOfTextAtSize(label, 8)
+    page.drawText(label, { x: PAGE_W / 2 - lw / 2, y: y - bh / 2 - 4, size: 8, font: oblique, color: MID_GRAY })
     return y - bh - 10
   }
 
@@ -206,7 +247,7 @@ export async function GET() {
   y = step(p2, y, 3, 'You will be redirected to the login screen automatically.', PAGE_W - MARGIN * 2)
   y -= 8
 
-  y = imageBox(p2, y, 'Screenshot: Login screen — "Inspector Gadget" title, email and password fields', 100)
+  y = imageBox(p2, y, 'Screenshot: Login screen', 100, ssLogin)
 
   y = subHeader(p2, y, 'Logging In')
   y -= 4
@@ -238,7 +279,7 @@ export async function GET() {
   p3.drawText('After login, the Home Screen gives you quick access to all form submission features of the app.', { x: MARGIN, y, size: 9.5, font, color: BLACK })
   y -= 22
 
-  y = imageBox(p3, y, 'Screenshot: Home Screen — showing action cards', 110)
+  y = imageBox(p3, y, 'Screenshot: Home Screen', 110, ssHome)
 
   y = subHeader(p3, y, 'Home Screen Action Cards')
   y -= 8
@@ -303,7 +344,7 @@ export async function GET() {
   y = step(p4, y, 4, 'Tap "Create Project" to save.', PAGE_W - MARGIN * 2)
   y -= 8
 
-  y = imageBox(p4, y, 'Screenshot: Project list and New Project form', 100)
+  y = imageBox(p4, y, 'Screenshot: Projects list', 100, ssProjects)
 
   y = subHeader(p4, y, 'Viewing a Project')
   y -= 4
@@ -344,7 +385,7 @@ export async function GET() {
   y = step(p5, y, 9, 'Tap "Submit Report".', PAGE_W - MARGIN * 2)
   y -= 8
 
-  y = imageBox(p5, y, 'Screenshot: Daily Report form on iPhone', 95)
+  y = imageBox(p5, y, 'Screenshot: Daily Report form', 95, ssDailyReport)
 
   y = subHeader(p5, y, 'Viewing & Editing a Daily Report')
   y -= 4
@@ -474,6 +515,7 @@ export async function GET() {
   y -= 6
   p8.drawText('The "View All Reports" page shows every report grouped by project with color-coded type badges.', { x: MARGIN, y, size: 9.5, font, color: BLACK })
   y -= 22
+  y = imageBox(p8, y, 'Screenshot: All Reports page', 100, ssReports)
 
   y = subHeader(p8, y, 'Badge Color Guide')
   y -= 10
@@ -515,7 +557,7 @@ export async function GET() {
   y = step(p8, y, 4, 'On desktop: the PDF downloads to your Downloads folder automatically.', PAGE_W - MARGIN * 2)
   y -= 10
 
-  y = imageBox(p8, y, 'Screenshot: Pour Log detail page showing Download PDF and Edit buttons', 90)
+  y = imageBox(p8, y, 'Screenshot: Pour Log', 90, ssPourLog)
 
   y = subHeader(p8, y, 'PDF Contents by Report Type')
   y -= 8
