@@ -17,7 +17,7 @@ export default async function Home() {
 
   const { data: settings } = await supabase
     .from('settings')
-    .select('company_name')
+    .select('company_name, logo_url')
     .single()
 
   const companyName = settings?.company_name || 'Your Company'
@@ -33,6 +33,9 @@ export default async function Home() {
     }}>
       <div style={{ width: '100%', maxWidth: '600px' }}>
         <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+          {settings?.logo_url && (
+            <img src={settings.logo_url} alt="Company logo" style={{ maxHeight: '70px', maxWidth: '200px', objectFit: 'contain', marginBottom: '1rem' }} />
+          )}
           <h1 style={{ color: '#1a1a1a', fontSize: '2.2rem', marginBottom: '.5rem', fontWeight: '800' }}>
             Field Reports
           </h1>
@@ -63,6 +66,14 @@ export default async function Home() {
               <div style={{ fontSize: '2rem', marginBottom: '.5rem' }}>🪣</div>
               <div style={{ fontSize: '1.3rem', fontWeight: '700', marginBottom: '.4rem' }}>Pour Log</div>
               <div style={{ fontSize: '.9rem', opacity: .85 }}>Record concrete pour details and placement</div>
+            </div>
+          </Link>
+
+          <Link href="/contractor-eval" style={{ textDecoration: 'none' }}>
+            <div style={{ background: '#1a1a1a', borderRadius: '10px', padding: '2rem', color: 'white', cursor: 'pointer' }}>
+              <div style={{ fontSize: '2rem', marginBottom: '.5rem' }}>📋</div>
+              <div style={{ fontSize: '1.3rem', fontWeight: '700', marginBottom: '.4rem' }}>Contractor Evaluation</div>
+              <div style={{ fontSize: '.9rem', opacity: .85 }}>Evaluate contractor safety, quality, and compliance</div>
             </div>
           </Link>
 

@@ -18,34 +18,41 @@ export default async function ReportsPage() {
   const [
     { data: projects },
     { data: reports },
-    { data: pourLogs }
+    { data: pourLogs },
+    { data: contractorEvals }
   ] = await Promise.all([
     supabase.from('projects').select('*').order('project_name', { ascending: true }),
     supabase.from('reports').select('*').order('report_date', { ascending: false }),
-    supabase.from('pour_logs').select('*').order('log_date', { ascending: false })
+    supabase.from('pour_logs').select('*').order('log_date', { ascending: false }),
+    supabase.from('contractor_evaluations').select('*').order('inspection_date', { ascending: false })
   ])
 
-  // Group by project_id
   const reportsByProject = {}
   const pourLogsByProject = {}
+  const evalsByProject = {}
 
   for (const r of reports || []) {
     const key = r.project_id || 'unassigned'
     if (!reportsByProject[key]) reportsByProject[key] = []
     reportsByProject[key].push(r)
   }
-
   for (const p of pourLogs || []) {
     const key = p.project_id || 'unassigned'
     if (!pourLogsByProject[key]) pourLogsByProject[key] = []
     pourLogsByProject[key].push(p)
+  }
+  for (const e of contractorEvals || []) {
+    const key = e.project_id || 'unassigned'
+    if (!evalsByProject[key]) evalsByProject[key] = []
+    evalsByProject[key].push(e)
   }
 
   const projectList = projects || []
   const allProjectIds = new Set([
     ...projectList.map(p => p.id),
     ...Object.keys(reportsByProject),
-    ...Object.keys(pourLogsByProject)
+    ...Object.keys(pourLogsByProject),
+    ...Object.keys(evalsByProject)
   ])
 
   const sections = []
@@ -56,14 +63,16 @@ export default async function ReportsPage() {
       id: pid,
       name: project?.project_name || 'Unknown Project',
       reports: reportsByProject[pid] || [],
-      pourLogs: pourLogsByProject[pid] || []
+      pourLogs: pourLogsByProject[pid] || [],
+      evals: evalsByProject[pid] || []
     })
   }
   sections.sort((a, b) => a.name.localeCompare(b.name))
 
   const unassignedReports = reportsByProject['unassigned'] || []
   const unassignedPourLogs = pourLogsByProject['unassigned'] || []
-  const hasUnassigned = unassignedReports.length > 0 || unassignedPourLogs.length > 0
+  const unassignedEvals = evalsByProject['unassigned'] || []
+  const hasUnassigned = unassignedReports.length > 0 || unassignedPourLogs.length > 0 || unassignedEvals.length > 0
 
   return (
     <main style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem' }}>
@@ -102,11 +111,13 @@ export default async function ReportsPage() {
             )}
 
             {section.reports.map((r, i) => (
-              <ReportRow key={r.id} report={r} type="daily" isLast={i === section.reports.length - 1 && section.pourLogs.length === 0} />
+              <ReportRow key={r.id} report={r} isLast={i === section.reports.length - 1 && section.pourLogs.length === 0 && section.evals.length === 0} />
             ))}
-
             {section.pourLogs.map((p, i) => (
-              <PourLogRow key={p.id} log={p} isLast={i === section.pourLogs.length - 1} />
+              <PourLogRow key={p.id} log={p} isLast={i === section.pourLogs.length - 1 && section.evals.length === 0} />
+            ))}
+            {section.evals.map((e, i) => (
+              <EvalRow key={e.id} eval_={e} isLast={i === section.evals.length - 1} />
             ))}
           </div>
         </div>
@@ -119,15 +130,50 @@ export default async function ReportsPage() {
           </div>
           <div style={{ border: '1px solid #e5e5e5', borderTop: 'none', borderRadius: '0 0 8px 8px', overflow: 'hidden' }}>
             {unassignedReports.map((r, i) => (
-              <ReportRow key={r.id} report={r} type="daily" isLast={i === unassignedReports.length - 1 && unassignedPourLogs.length === 0} />
+              <ReportRow key={r.id} report={r} isLast={i === unassignedReports.length - 1 && unassignedPourLogs.length === 0 && unassignedEvals.length === 0} />
             ))}
             {unassignedPourLogs.map((p, i) => (
-              <PourLogRow key={p.id} log={p} isLast={i === unassignedPourLogs.length - 1} />
+              <PourLogRow key={p.id} log={p} isLast={i === unassignedPourLogs.length - 1 && unassignedEvals.length === 0} />
+            ))}
+            {unassignedEvals.map((e, i) => (
+              <EvalRow key={e.id} eval_={e} isLast={i === unassignedEvals.length - 1} />
             ))}
           </div>
         </div>
       )}
     </main>
+  )
+}
+
+function EvalRow({ eval_, isLast }) {
+  return (
+    <div style={{
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      padding: '1rem 1.5rem', background: 'white',
+      borderBottom: isLast ? 'none' : '1px solid #f0f0f0'
+    }}>
+      <Link href={`/contractor-evals/${eval_.id}`} style={{ textDecoration: 'none', flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <span style={{ background: '#f0faf0', color: '#2a7a2a', fontSize: '.7rem', fontWeight: '700', padding: '.2rem .5rem', borderRadius: '4px', whiteSpace: 'nowrap' }}>
+            EVAL
+          </span>
+          <div>
+            <div style={{ fontWeight: '600', color: '#1a1a1a', fontSize: '.95rem' }}>
+              {formatDate(eval_.inspection_date)} {eval_.overall_rating ? `· ${eval_.overall_rating}` : ''}
+            </div>
+            <div style={{ color: '#888', fontSize: '.8rem' }}>
+              {eval_.contractor_name || eval_.inspector_name || '-'}
+            </div>
+          </div>
+        </div>
+      </Link>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <Link href={`/contractor-evals/${eval_.id}`} style={{ color: '#2a7a2a', fontSize: '.85rem', textDecoration: 'none', fontWeight: '600' }}>View</Link>
+        <form action={`/api/delete/contractor-eval/${eval_.id}`} method="POST">
+          <button type="submit" style={{ background: 'none', border: 'none', color: '#ccc', fontSize: '.85rem', cursor: 'pointer', padding: 0 }}>Delete</button>
+        </form>
+      </div>
+    </div>
   )
 }
 

@@ -45,7 +45,7 @@ export async function GET(request, { params }) {
 
   const { data: settings } = await supabase
     .from('settings')
-    .select('company_name')
+    .select('company_name, logo_url')
     .single()
 
   const companyName = settings?.company_name || 'Field Reports'
@@ -59,6 +59,19 @@ export async function GET(request, { params }) {
   page.drawRectangle({ x: 0, y: height - 80, width: 612, height: 80, color: rgb(0.1, 0.1, 0.1) })
   page.drawText('DRILLED SHAFT POUR LOG', { x: 40, y: height - 45, size: 20, font: boldFont, color: rgb(1, 1, 1) })
   page.drawText(companyName, { x: 40, y: height - 65, size: 11, font, color: rgb(0.8, 0.8, 0.8) })
+
+  if (settings?.logo_url) {
+    try {
+      const logoRes = await fetch(settings.logo_url)
+      const logoBytes = new Uint8Array(await logoRes.arrayBuffer())
+      let logoImg
+      try { logoImg = await pdfDoc.embedPng(logoBytes) } catch { logoImg = await pdfDoc.embedJpg(logoBytes) }
+      const { width: lw, height: lh } = logoImg.scale(1)
+      const maxH = 50, maxW = 120
+      const scale = Math.min(maxW / lw, maxH / lh)
+      page.drawImage(logoImg, { x: 612 - 40 - lw * scale, y: height - 70, width: lw * scale, height: lh * scale })
+    } catch (e) { console.error('Logo embed error:', e) }
+  }
 
   let y = height - 100
 

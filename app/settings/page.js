@@ -32,66 +32,48 @@ export default async function SettingsPage() {
       }}>
         <div style={{ marginBottom: '1.5rem' }}>
           <Link href="/" style={{ color: '#cc3300', textDecoration: 'none', fontSize: '.9rem' }}>
-            Back to Home
+            ← Back to Home
           </Link>
         </div>
 
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <h1 style={{ color: '#1a1a1a', fontSize: '1.8rem', marginBottom: '.5rem' }}>
-            Settings
-          </h1>
+          <h1 style={{ color: '#1a1a1a', fontSize: '1.8rem', marginBottom: '.5rem' }}>Settings</h1>
           <p style={{ color: '#666', fontSize: '.95rem' }}>
             Your company info appears on all reports and PDFs.
           </p>
         </div>
 
-        <form action="/api/settings/update" method="POST">
+        {settings?.logo_url && (
+          <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+            <p style={{ fontSize: '.8rem', color: '#999', marginBottom: '.5rem' }}>Current Logo</p>
+            <img src={settings.logo_url} alt="Company logo" style={{ maxHeight: '80px', maxWidth: '240px', objectFit: 'contain' }} />
+          </div>
+        )}
+
+        <form action="/api/settings/update" method="POST" encType="multipart/form-data">
           <div style={{ marginBottom: '1.2rem' }}>
-            <label style={{ display: 'block', fontWeight: '600', marginBottom: '.4rem', color: '#333' }}>
-              Company Name
-            </label>
-            <input
-              name="company_name"
-              required
-              style={inputStyle}
-              defaultValue={settings?.company_name || ''}
-              placeholder="e.g. Acme Construction LLC"
-            />
+            <label style={labelStyle}>Company Name</label>
+            <input name="company_name" required style={inputStyle} defaultValue={settings?.company_name || ''} placeholder="e.g. Acme Construction LLC" />
           </div>
           <div style={{ marginBottom: '1.2rem' }}>
-            <label style={{ display: 'block', fontWeight: '600', marginBottom: '.4rem', color: '#333' }}>
-              Company Email
-            </label>
-            <input
-              name="company_email"
-              type="email"
-              style={inputStyle}
-              defaultValue={settings?.company_email || ''}
-              placeholder="e.g. reports@acmeconstruction.com"
-            />
+            <label style={labelStyle}>Company Email</label>
+            <input name="company_email" type="email" style={inputStyle} defaultValue={settings?.company_email || ''} placeholder="e.g. reports@acmeconstruction.com" />
           </div>
           <div style={{ marginBottom: '1.2rem' }}>
-            <label style={{ display: 'block', fontWeight: '600', marginBottom: '.4rem', color: '#333' }}>
-              Company Phone
+            <label style={labelStyle}>Company Phone</label>
+            <input name="company_phone" style={inputStyle} defaultValue={settings?.company_phone || ''} placeholder="e.g. (316) 555-0100" />
+          </div>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={labelStyle}>
+              Company Logo <span style={{ fontWeight: '400', color: '#888', fontSize: '.85rem' }}>(optional — shows on pages and PDFs)</span>
             </label>
-            <input
-              name="company_phone"
-              style={inputStyle}
-              defaultValue={settings?.company_phone || ''}
-              placeholder="e.g. (316) 555-0100"
-            />
+            <input name="logo" type="file" accept="image/*" style={{ ...inputStyle, padding: '.5rem', cursor: 'pointer' }} />
           </div>
           <button type="submit" style={{
-            width: '100%',
-            padding: '1rem',
-            background: '#cc3300',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            fontSize: '1.1rem',
-            fontWeight: '700',
-            cursor: 'pointer',
-            marginTop: '.5rem'
+            width: '100%', padding: '1rem',
+            background: '#cc3300', color: 'white',
+            border: 'none', borderRadius: '6px',
+            fontSize: '1.1rem', fontWeight: '700', cursor: 'pointer'
           }}>
             Save Settings
           </button>
@@ -101,11 +83,5 @@ export default async function SettingsPage() {
   )
 }
 
-const inputStyle = {
-  width: '100%',
-  padding: '.75rem',
-  border: '1px solid #ddd',
-  borderRadius: '6px',
-  fontSize: '1rem',
-  boxSizing: 'border-box'
-}
+const labelStyle = { display: 'block', fontWeight: '600', marginBottom: '.4rem', color: '#333' }
+const inputStyle = { width: '100%', padding: '.75rem', border: '1px solid #ddd', borderRadius: '6px', fontSize: '1rem', boxSizing: 'border-box' }
