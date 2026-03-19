@@ -235,21 +235,19 @@ export async function GET() {
 
   y = sectionHeader(p3, y, '2.  HOME SCREEN OVERVIEW')
   y -= 6
-  p3.drawText('After login, the Home Screen gives you quick access to all major features of the app.', { x: MARGIN, y, size: 9.5, font, color: BLACK })
+  p3.drawText('After login, the Home Screen gives you quick access to all form submission features of the app.', { x: MARGIN, y, size: 9.5, font, color: BLACK })
   y -= 22
 
-  y = imageBox(p3, y, 'Screenshot: Home Screen — showing all menu cards', 120)
+  y = imageBox(p3, y, 'Screenshot: Home Screen — showing action cards', 110)
 
-  y = subHeader(p3, y, 'Home Screen Buttons')
+  y = subHeader(p3, y, 'Home Screen Action Cards')
   y -= 8
 
   const homeItems = [
-    { label: 'Projects  (red card)', desc: 'View, create, and manage all your projects. This is the hub for all project-level activity.' },
+    { label: 'Projects  (red card)', desc: 'View, create, and manage all your projects. This is the main hub for all project-level activity.' },
     { label: 'Daily Report  (dark card)', desc: 'Submit a daily crew, weather, and work summary report. You will be asked to select a project first.' },
     { label: 'Pour Log  (dark card)', desc: 'Record concrete pour details including foundations and truck data. Select a project first.' },
     { label: 'Contractor Evaluation  (dark card)', desc: 'Complete a structured evaluation of a contractor across 6 categories. Select a project first.' },
-    { label: 'View All Reports  (white card)', desc: 'Browse every report, pour log, and evaluation grouped by project.' },
-    { label: 'Settings  (white card)', desc: 'Update your company name and upload your company logo.' },
     { label: 'Sign Out  (bottom link)', desc: 'Securely log out of the application.' },
   ]
 
@@ -263,6 +261,25 @@ export async function GET() {
       y -= 13
     }
     y -= 6
+  }
+
+  y -= 4
+  y = subHeader(p3, y, 'Bottom Navigation Bar')
+  y -= 6
+  p3.drawText('A navigation bar is always visible at the bottom of every screen with four quick-access tabs:', { x: MARGIN, y, size: 9.5, font, color: BLACK })
+  y -= 18
+
+  const navTabItems = [
+    { label: 'Home', desc: 'Return to the main action menu.' },
+    { label: 'Projects', desc: 'Jump directly to the full projects list.' },
+    { label: 'Reports', desc: 'Open the View All Reports page.' },
+    { label: 'Settings', desc: 'Access company settings and logo upload.' },
+  ]
+  for (const t of navTabItems) {
+    if (y < 60) break
+    p3.drawText(t.label + ':', { x: MARGIN + 8, y, size: 9.5, font: bold, color: BLACK })
+    p3.drawText(t.desc, { x: MARGIN + 8 + bold.widthOfTextAtSize(t.label + ':', 9.5) + 6, y, size: 9.5, font, color: GRAY })
+    y -= 16
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -553,17 +570,18 @@ export async function GET() {
   y -= 14
 
   const flows = [
-    { from: 'Home Screen', arrow: '→', to: 'Projects', arrow2: '→', end: 'Project Detail → Submit any report' },
-    { from: 'Home Screen', arrow: '→', to: 'Daily Report', arrow2: '→', to2: 'Select Project', arrow3: '→', end: 'Report Form' },
-    { from: 'Home Screen', arrow: '→', to: 'Pour Log', arrow2: '→', to2: 'Select Project', arrow3: '→', end: 'Choose Shaft or Flatwork' },
-    { from: 'Home Screen', arrow: '→', to: 'Contractor Eval', arrow2: '→', to2: 'Select Project', arrow3: '→', end: 'Eval Form' },
-    { from: 'Home Screen', arrow: '→', to: 'View All Reports', arrow2: '→', end: 'All records by project' },
+    { from: 'Bottom Nav: Projects', to: 'Project Detail', end: 'Submit any report directly' },
+    { from: 'Home: Daily Report', to: 'Select Project', end: 'Daily Report Form' },
+    { from: 'Home: Pour Log', to: 'Select Project', end: 'Choose Drilled Shaft or Flatwork' },
+    { from: 'Home: Contractor Eval', to: 'Select Project', end: 'Evaluation Form' },
+    { from: 'Bottom Nav: Reports', to: 'All Reports by Project', end: 'View / Edit / Delete / PDF' },
+    { from: 'Bottom Nav: Settings', to: 'Company Name & Logo', end: 'Download SOP PDF' },
   ]
 
   for (const flow of flows) {
     if (y < 80) break
     p9.drawRectangle({ x: MARGIN, y: y - 12, width: PAGE_W - MARGIN * 2, height: 20, color: LIGHT_GRAY })
-    const flowText = [flow.from, flow.to, flow.to2, flow.end].filter(Boolean).join('  →  ')
+    const flowText = [flow.from, flow.to, flow.end].filter(Boolean).join('  →  ')
     p9.drawText(flowText, { x: MARGIN + 8, y: y - 4, size: 8.5, font, color: BLACK })
     y -= 26
   }

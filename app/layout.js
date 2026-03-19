@@ -1,3 +1,5 @@
+import BottomNav from '@/app/components/BottomNav'
+
 export const metadata = {
   title: 'Field Reports',
   description: 'Construction field reporting tool',
@@ -17,6 +19,7 @@ export default function RootLayout({ children }) {
         background: '#f5f5f5'
       }}>
         {children}
+        <BottomNav />
       </body>
     </html>
   )

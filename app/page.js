@@ -47,7 +47,6 @@ export default async function Home() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <Link href="/projects" style={{ textDecoration: 'none' }}>
             <div style={{ background: '#cc3300', borderRadius: '10px', padding: '2rem', color: 'white', cursor: 'pointer' }}>
-              <div style={{ fontSize: '2rem', marginBottom: '.5rem' }}>📁</div>
               <div style={{ fontSize: '1.3rem', fontWeight: '700', marginBottom: '.4rem' }}>Projects</div>
               <div style={{ fontSize: '.9rem', opacity: .85 }}>Manage projects and submit reports by project</div>
             </div>
@@ -55,7 +54,6 @@ export default async function Home() {
 
           <Link href="/select-project?for=daily-report" style={{ textDecoration: 'none' }}>
             <div style={{ background: '#1a1a1a', borderRadius: '10px', padding: '2rem', color: 'white', cursor: 'pointer' }}>
-              <div style={{ fontSize: '2rem', marginBottom: '.5rem' }}>📋</div>
               <div style={{ fontSize: '1.3rem', fontWeight: '700', marginBottom: '.4rem' }}>Daily Report</div>
               <div style={{ fontSize: '.9rem', opacity: .85 }}>Submit a daily crew, work, and safety report</div>
             </div>
@@ -63,7 +61,6 @@ export default async function Home() {
 
           <Link href="/select-project?for=pour-log" style={{ textDecoration: 'none' }}>
             <div style={{ background: '#1a1a1a', borderRadius: '10px', padding: '2rem', color: 'white', cursor: 'pointer' }}>
-              <div style={{ fontSize: '2rem', marginBottom: '.5rem' }}>🪣</div>
               <div style={{ fontSize: '1.3rem', fontWeight: '700', marginBottom: '.4rem' }}>Pour Log</div>
               <div style={{ fontSize: '.9rem', opacity: .85 }}>Record concrete pour details and placement</div>
             </div>
@@ -71,29 +68,11 @@ export default async function Home() {
 
           <Link href="/select-project?for=contractor-eval" style={{ textDecoration: 'none' }}>
             <div style={{ background: '#1a1a1a', borderRadius: '10px', padding: '2rem', color: 'white', cursor: 'pointer' }}>
-              <div style={{ fontSize: '2rem', marginBottom: '.5rem' }}>📋</div>
               <div style={{ fontSize: '1.3rem', fontWeight: '700', marginBottom: '.4rem' }}>Contractor Evaluation</div>
               <div style={{ fontSize: '.9rem', opacity: .85 }}>Evaluate contractor safety, quality, and compliance</div>
             </div>
           </Link>
 
-          <Link href="/reports" style={{ textDecoration: 'none' }}>
-            <div style={{ background: 'white', border: '2px solid #e5e5e5', borderRadius: '10px', padding: '2rem', color: '#1a1a1a', cursor: 'pointer' }}>
-              <div style={{ fontSize: '2rem', marginBottom: '.5rem' }}>📂</div>
-              <div style={{ fontSize: '1.3rem', fontWeight: '700', marginBottom: '.4rem' }}>View All Reports</div>
-              <div style={{ fontSize: '.9rem', color: '#666' }}>Browse and manage all submitted reports</div>
-            </div>
-          </Link>
-
-          <Link href="/settings" style={{ textDecoration: 'none' }}>
-            <div style={{ background: 'white', border: '2px solid #e5e5e5', borderRadius: '10px', padding: '1.5rem 2rem', color: '#1a1a1a', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <div style={{ fontSize: '1.5rem' }}>⚙️</div>
-              <div>
-                <div style={{ fontSize: '1rem', fontWeight: '700' }}>Settings</div>
-                <div style={{ fontSize: '.85rem', color: '#666' }}>Company name, email, phone</div>
-              </div>
-            </div>
-          </Link>
 
           <form action="/api/auth/logout" method="POST">
             <button type="submit" style={{

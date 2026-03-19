@@ -15,9 +15,9 @@ export async function POST(request, { params }) {
 
     if (error) throw error
 
-    return NextResponse.redirect(new URL('/reports', request.url), 303)
+    return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json' } })
   } catch (err) {
     console.error(err)
-    return new Response('Delete failed.', { status: 500 })
+    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { 'Content-Type': 'application/json' } })
   }
 }

@@ -120,6 +120,7 @@ export default async function ContractorEvalDetail({ params }) {
         <DeleteButton
           action={`/api/delete/contractor-eval/${eval_.id}`}
           label="Delete Evaluation"
+          redirectTo={backHref}
           style={{ ...btnStyle('white', '#cc3300'), border: '2px solid #cc3300', cursor: 'pointer', width: '100%' }}
         />
       </div>
