@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 import { getUserId } from '@/lib/get-user-id'
+import DeleteButton from '@/app/components/DeleteButton'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -167,6 +168,23 @@ export default async function ProjectDetail({ params }) {
         }}>
           Edit Project
         </Link>
+        <DeleteButton
+          action={`/api/delete/project/${project.id}`}
+          label="Delete Project"
+          redirectTo="/projects"
+          style={{
+            flex: 1,
+            minWidth: '140px',
+            padding: '.8rem 1rem',
+            background: 'white',
+            color: '#cc3300',
+            border: '2px solid #cc3300',
+            borderRadius: '6px',
+            fontWeight: '600',
+            fontSize: '.9rem',
+            textAlign: 'center'
+          }}
+        />
       </div>
 
       <h2 style={{ fontSize: '1.2rem', color: '#1a1a1a', marginBottom: '1rem' }}>Daily Reports</h2>
