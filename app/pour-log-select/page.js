@@ -31,7 +31,6 @@ export default async function PourLogSelect({ searchParams }) {
               color: 'white',
               cursor: 'pointer'
             }}>
-              <div style={{ fontSize: '2rem', marginBottom: '.5rem' }}>🪣</div>
               <div style={{ fontSize: '1.3rem', fontWeight: '700', marginBottom: '.4rem' }}>Drilled Shaft</div>
               <div style={{ fontSize: '.9rem', opacity: .85 }}>Multiple foundations, truck-by-truck depth tracking</div>
             </div>
@@ -45,7 +44,6 @@ export default async function PourLogSelect({ searchParams }) {
               color: 'white',
               cursor: 'pointer'
             }}>
-              <div style={{ fontSize: '2rem', marginBottom: '.5rem' }}>🏗️</div>
               <div style={{ fontSize: '1.3rem', fontWeight: '700', marginBottom: '.4rem' }}>Flatwork</div>
               <div style={{ fontSize: '.9rem', opacity: .85 }}>Slabs, pads, and flatwork concrete placement</div>
             </div>

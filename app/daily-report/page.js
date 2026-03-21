@@ -28,6 +28,9 @@ function DailyReportInner() {
     safety_issues: '',
     weather: '',
     submitted_by: '',
+    weather_delay: false,
+    weather_delay_hours: '',
+    on_schedule: true,
   })
   const [copyState, setCopyState] = useState('idle') // idle | loading | copied | none
   const [weatherLoading, setWeatherLoading] = useState(false)
@@ -187,6 +190,9 @@ function DailyReportInner() {
     fd.append('safety_issues', fields.safety_issues)
     fd.append('weather', fields.weather)
     fd.append('submitted_by', fields.submitted_by)
+    fd.append('weather_delay', fields.weather_delay ? 'true' : 'false')
+    fd.append('weather_delay_hours', fields.weather_delay ? fields.weather_delay_hours : '')
+    fd.append('on_schedule', fields.on_schedule ? 'true' : 'false')
 
     for (const entry of photoEntries) {
       const fileInput = fileRefs.current[entry.id]
@@ -369,6 +375,60 @@ function DailyReportInner() {
             </div>
             <input name="weather" required style={inputStyle} value={fields.weather} onChange={set('weather')} placeholder="e.g. Clear, 58°F" />
           </div>
+          {/* Weather Delay */}
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Weather Delay</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '.5rem', cursor: 'pointer', fontWeight: '400', color: '#333' }}>
+                <input
+                  type="checkbox"
+                  checked={fields.weather_delay}
+                  onChange={e => setFields(f => ({ ...f, weather_delay: e.target.checked, weather_delay_hours: e.target.checked ? f.weather_delay_hours : '' }))}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                />
+                Work delayed due to weather
+              </label>
+              {fields.weather_delay && (
+                <input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={fields.weather_delay_hours}
+                  onChange={e => setFields(f => ({ ...f, weather_delay_hours: e.target.value }))}
+                  placeholder="Hours lost"
+                  style={{ ...inputStyle, width: '130px' }}
+                />
+              )}
+            </div>
+          </div>
+
+          {/* On Schedule */}
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Project Schedule</label>
+            <div style={{ display: 'flex', gap: '.75rem' }}>
+              {[{ label: 'On Schedule', value: true }, { label: 'Behind Schedule', value: false }].map(opt => (
+                <button
+                  key={String(opt.value)}
+                  type="button"
+                  onClick={() => setFields(f => ({ ...f, on_schedule: opt.value }))}
+                  style={{
+                    flex: 1,
+                    padding: '.65rem',
+                    borderRadius: '6px',
+                    border: fields.on_schedule === opt.value ? 'none' : '1px solid #ddd',
+                    background: fields.on_schedule === opt.value ? (opt.value ? '#2a7a2a' : '#cc3300') : 'white',
+                    color: fields.on_schedule === opt.value ? 'white' : '#555',
+                    fontWeight: '600',
+                    fontSize: '.9rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div style={fieldStyle}>
             <label style={labelStyle}>Submitted By</label>
             <input name="submitted_by" required style={inputStyle} value={fields.submitted_by} onChange={set('submitted_by')} placeholder="Your name" />

@@ -22,6 +22,9 @@ export async function POST(request) {
     const safety_issues = formData.get('safety_issues')
     const weather = formData.get('weather')
     const submitted_by = formData.get('submitted_by')
+    const weather_delay = formData.get('weather_delay') === 'true'
+    const weather_delay_hours = formData.get('weather_delay_hours') ? parseFloat(formData.get('weather_delay_hours')) : null
+    const on_schedule = formData.get('on_schedule') !== 'false'
 
     const photoFiles = formData.getAll('photos').filter(f => f && f.size > 0)
     const photoLabelsRaw = formData.getAll('photo_labels')
@@ -72,6 +75,9 @@ export async function POST(request) {
         submitted_by,
         photo_urls: photo_urls.length > 0 ? photo_urls : null,
         photo_labels: photo_labels.length > 0 ? photo_labels : null,
+        weather_delay,
+        weather_delay_hours,
+        on_schedule,
         user_id
       })
 

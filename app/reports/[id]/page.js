@@ -44,6 +44,18 @@ export default async function ReportDetail({ params }) {
         <div style={{ padding: '2rem' }}>
           <Field label="Crew Count on Site" value={report.crew_count} />
           <Field label="Weather Conditions" value={report.weather} />
+          {report.weather_delay && (
+            <Field
+              label="Weather Delay"
+              value={report.weather_delay_hours ? `${report.weather_delay_hours} hrs lost` : 'Yes'}
+              highlight="red"
+            />
+          )}
+          <Field
+            label="Schedule Status"
+            value={report.on_schedule === false ? 'Behind Schedule' : 'On Schedule'}
+            highlight={report.on_schedule === false ? 'red' : 'green'}
+          />
           <Field label="Work Completed Today" value={report.work_completed} />
           <Field label="Equipment Used" value={report.equipment_used} />
           <Field label="Safety / Issues" value={report.safety_issues} />
@@ -111,13 +123,14 @@ export default async function ReportDetail({ params }) {
   )
 }
 
-function Field({ label, value }) {
+function Field({ label, value, highlight }) {
+  const color = highlight === 'red' ? '#cc3300' : highlight === 'green' ? '#2a7a2a' : '#1a1a1a'
   return (
     <div style={{ marginBottom: '1.2rem', paddingBottom: '1.2rem', borderBottom: '1px solid #f0f0f0' }}>
       <div style={{ fontSize: '.75rem', fontWeight: '700', color: '#999', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: '.3rem' }}>
         {label}
       </div>
-      <div style={{ fontSize: '1rem', color: '#1a1a1a', lineHeight: '1.6' }}>
+      <div style={{ fontSize: '1rem', color, fontWeight: highlight ? '600' : '400', lineHeight: '1.6' }}>
         {value || '-'}
       </div>
     </div>
