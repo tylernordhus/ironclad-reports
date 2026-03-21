@@ -23,7 +23,7 @@ export async function GET(request, { params }) {
 
     const { data: reports } = await supabase
       .from('reports')
-      .select('report_date, crew_count, work_completed, equipment_used, safety_issues, weather, submitted_by')
+      .select('report_date, crew_count, work_completed, equipment_used, safety_issues, weather, submitted_by, photo_urls, photo_labels')
       .eq('project_id', params.projectId)
       .eq('user_id', user_id)
       .gte('report_date', startDate)
@@ -34,9 +34,12 @@ export async function GET(request, { params }) {
       return Response.json({ summary: null, reports: [], project_name: project?.project_name })
     }
 
-    const reportText = reports.map(r =>
-      `Date: ${r.report_date}\nCrew: ${r.crew_count}\nWeather: ${r.weather || 'N/A'}\nWork Completed: ${r.work_completed}\nEquipment: ${r.equipment_used || 'N/A'}\nSafety/Issues: ${r.safety_issues || 'None'}`
-    ).join('\n\n---\n\n')
+    const reportText = reports.map(r => {
+      let line = `Date: ${r.report_date}\nCrew: ${r.crew_count}\nWeather: ${r.weather || 'N/A'}\nWork Completed: ${r.work_completed}\nEquipment: ${r.equipment_used || 'N/A'}\nSafety/Issues: ${r.safety_issues || 'None'}`
+      if (r.weather_delay) line += `\nWeather Delay: ${r.weather_delay_hours ? r.weather_delay_hours + ' hrs' : 'Yes'}`
+      if (r.on_schedule === false) line += '\nSchedule: Behind Schedule'
+      return line
+    }).join('\n\n---\n\n')
 
     const message = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
