@@ -49,23 +49,16 @@ export default function NewProject() {
 
           <div style={{ marginBottom: '1.2rem' }}>
             <label style={{ display: 'block', fontWeight: '600', marginBottom: '.4rem', color: '#333' }}>
-              Exact Address <span style={{ fontWeight: '400', color: '#999' }}>(optional)</span>
+              Owner / Client Name <span style={{ fontWeight: '400', color: '#999' }}>(optional)</span>
             </label>
-            <input name="address" style={inputStyle} placeholder="e.g. 1234 Industrial Blvd, Wichita, KS 67201" />
+            <input name="client_name" style={inputStyle} placeholder="e.g. Evergy" />
           </div>
 
           <div style={{ marginBottom: '1.2rem' }}>
             <label style={{ display: 'block', fontWeight: '600', marginBottom: '.4rem', color: '#333' }}>
-              Owner / Client Name
+              Owner / Client Email <span style={{ fontWeight: '400', color: '#999' }}>(optional)</span>
             </label>
-            <input name="client_name" required style={inputStyle} placeholder="e.g. Evergy" />
-          </div>
-
-          <div style={{ marginBottom: '1.2rem' }}>
-            <label style={{ display: 'block', fontWeight: '600', marginBottom: '.4rem', color: '#333' }}>
-              Owner / Client Email
-            </label>
-            <input name="client_email" type="email" required style={inputStyle} placeholder="e.g. pm@evergy.com" />
+            <input name="client_email" type="email" style={inputStyle} placeholder="e.g. pm@evergy.com" />
           </div>
 
           <div style={{ marginBottom: '1.2rem' }}>
