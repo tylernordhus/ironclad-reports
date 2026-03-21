@@ -106,15 +106,17 @@ function DailyReportInner() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: fields.work_completed }),
       })
-      const { polished } = await res.json()
-      if (polished) {
-        setFields(f => ({ ...f, work_completed: polished }))
+      const data = await res.json()
+      if (data.polished) {
+        setFields(f => ({ ...f, work_completed: data.polished }))
         setPolishState('done')
         setTimeout(() => setPolishState('idle'), 3000)
       } else {
+        alert('AI Polish failed. Make sure ANTHROPIC_API_KEY is set in Vercel and redeploy.')
         setPolishState('idle')
       }
     } catch {
+      alert('AI Polish failed. Check your network connection.')
       setPolishState('idle')
     }
   }
@@ -131,6 +133,16 @@ function DailyReportInner() {
 
   function setPhotoLabel(id, label) {
     setPhotoEntries(prev => prev.map(e => e.id === id ? { ...e, label } : e))
+  }
+
+  function toggleEquipment(item) {
+    setFields(f => {
+      const current = f.equipment_used ? f.equipment_used.split(', ').filter(Boolean) : []
+      const next = current.includes(item)
+        ? current.filter(e => e !== item)
+        : [...current, item]
+      return { ...f, equipment_used: next.join(', ') }
+    })
   }
 
   async function handleSubmit(e) {
@@ -256,7 +268,37 @@ function DailyReportInner() {
 
           <div style={fieldStyle}>
             <label style={labelStyle}>Equipment Used</label>
-            <input name="equipment_used" required style={inputStyle} value={fields.equipment_used} onChange={set('equipment_used')} placeholder="e.g. Excavator, skid steer, boom truck" />
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.4rem', marginBottom: '.6rem' }}>
+              {EQUIPMENT_OPTIONS.map(item => {
+                const selected = fields.equipment_used.split(', ').includes(item)
+                return (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => toggleEquipment(item)}
+                    style={{
+                      padding: '.35rem .75rem',
+                      borderRadius: '20px',
+                      border: selected ? 'none' : '1px solid #ddd',
+                      background: selected ? '#cc3300' : 'white',
+                      color: selected ? 'white' : '#333',
+                      fontSize: '.85rem',
+                      fontWeight: selected ? '600' : '400',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {item}
+                  </button>
+                )
+              })}
+            </div>
+            <input
+              name="equipment_used"
+              style={inputStyle}
+              value={fields.equipment_used}
+              onChange={set('equipment_used')}
+              placeholder="Or type custom equipment..."
+            />
           </div>
           <div style={fieldStyle}>
             <label style={labelStyle}>Safety / Issues</label>
@@ -332,6 +374,13 @@ function DailyReportInner() {
     </main>
   )
 }
+
+const EQUIPMENT_OPTIONS = [
+  'Excavator', 'Skid Steer', 'Backhoe', 'Bulldozer', 'Loader',
+  'Boom Truck', 'Line Truck', 'Dump Truck', 'Crane', 'Forklift',
+  'Drill Rig', 'Auger', 'Trencher', 'Compactor', 'Manlifter',
+  'Scissor Lift', 'Concrete Pump', 'Concrete Mixer', 'Generator', 'Compressor',
+]
 
 const fieldStyle = { marginBottom: '1.2rem' }
 const labelStyle = { display: 'block', fontWeight: '600', marginBottom: '.4rem', color: '#333' }
