@@ -153,6 +153,20 @@ export default async function ProjectDetail({ params }) {
         }}>
           + Contractor Eval
         </Link>
+        <Link href={'/projects/' + project.id + '/weekly-summary'} style={{
+          flex: 1,
+          minWidth: '140px',
+          padding: '.8rem 1rem',
+          background: '#1a4a7a',
+          color: 'white',
+          borderRadius: '6px',
+          textDecoration: 'none',
+          fontWeight: '600',
+          fontSize: '.9rem',
+          textAlign: 'center'
+        }}>
+          Weekly Summary
+        </Link>
         <Link href={'/projects/' + project.id + '/edit'} style={{
           flex: 1,
           minWidth: '140px',

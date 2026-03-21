@@ -53,16 +53,24 @@ export default async function ReportDetail({ params }) {
               <div style={{ fontSize: '.75rem', fontWeight: '700', color: '#999', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: '.75rem' }}>
                 Photos
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '.75rem' }}>
-                {report.photo_urls.map((url, i) => (
-                  <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-                    <img
-                      src={url}
-                      alt={`Photo ${i + 1}`}
-                      style={{ width: '100%', height: '140px', objectFit: 'cover', borderRadius: '6px', display: 'block' }}
-                    />
-                  </a>
-                ))}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '.75rem' }}>
+                {report.photo_urls.map((url, i) => {
+                  const label = report.photo_labels?.[i]
+                  return (
+                    <div key={i}>
+                      <a href={url} target="_blank" rel="noopener noreferrer">
+                        <img
+                          src={url}
+                          alt={label || `Photo ${i + 1}`}
+                          style={{ width: '100%', height: '140px', objectFit: 'cover', borderRadius: '6px', display: 'block' }}
+                        />
+                      </a>
+                      {label && (
+                        <div style={{ fontSize: '.78rem', color: '#555', marginTop: '.3rem', lineHeight: '1.4' }}>{label}</div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}

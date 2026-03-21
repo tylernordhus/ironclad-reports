@@ -24,8 +24,12 @@ export async function POST(request) {
     const submitted_by = formData.get('submitted_by')
 
     const photoFiles = formData.getAll('photos').filter(f => f && f.size > 0)
+    const photoLabelsRaw = formData.getAll('photo_labels')
     const photo_urls = []
-    for (const photo of photoFiles) {
+    const photo_labels = []
+    for (let i = 0; i < photoFiles.length; i++) {
+      const photo = photoFiles[i]
+      const label = photoLabelsRaw[i] || ''
       const bytes = await photo.arrayBuffer()
       let buffer = Buffer.from(bytes)
       let safeName = photo.name.replace(/[^a-zA-Z0-9._-]/g, '_')
@@ -48,6 +52,7 @@ export async function POST(request) {
           .from('report-photos')
           .getPublicUrl(path)
         photo_urls.push(publicUrl)
+        photo_labels.push(label)
       } else {
         console.error('Photo upload error:', uploadError)
       }
@@ -66,6 +71,7 @@ export async function POST(request) {
         weather,
         submitted_by,
         photo_urls: photo_urls.length > 0 ? photo_urls : null,
+        photo_labels: photo_labels.length > 0 ? photo_labels : null,
         user_id
       })
 
