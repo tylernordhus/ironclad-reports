@@ -32,6 +32,9 @@ function DailyReportInner() {
   const [copyState, setCopyState] = useState('idle') // idle | loading | copied | none
   const [weatherLoading, setWeatherLoading] = useState(false)
   const [polishState, setPolishState] = useState('idle') // idle | loading | done
+  const [equipmentList, setEquipmentList] = useState([])
+  const [newEquipment, setNewEquipment] = useState('')
+  const [addingEquipment, setAddingEquipment] = useState(false)
   const [photoEntries, setPhotoEntries] = useState([{ id: 1, label: '' }])
   const [submitting, setSubmitting] = useState(false)
   const fileRefs = useRef({})
@@ -70,6 +73,31 @@ function DailyReportInner() {
       })
       .catch(() => setWeatherLoading(false))
   }, [project_id])
+
+  // Load project equipment list
+  useEffect(() => {
+    if (!project_id) return
+    fetch(`/api/projects/${project_id}/equipment`)
+      .then(r => r.json())
+      .then(({ equipment_list }) => setEquipmentList(equipment_list || []))
+      .catch(() => {})
+  }, [project_id])
+
+  async function handleAddEquipment() {
+    if (!newEquipment.trim()) return
+    setAddingEquipment(true)
+    try {
+      const res = await fetch(`/api/projects/${project_id}/equipment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ item: newEquipment.trim() }),
+      })
+      const { equipment_list } = await res.json()
+      setEquipmentList(equipment_list || [])
+      setNewEquipment('')
+    } catch {}
+    setAddingEquipment(false)
+  }
 
   function set(field) {
     return (e) => setFields(f => ({ ...f, [field]: e.target.value }))
@@ -268,36 +296,66 @@ function DailyReportInner() {
 
           <div style={fieldStyle}>
             <label style={labelStyle}>Equipment Used</label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.4rem', marginBottom: '.6rem' }}>
-              {EQUIPMENT_OPTIONS.map(item => {
-                const selected = fields.equipment_used.split(', ').includes(item)
-                return (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => toggleEquipment(item)}
-                    style={{
-                      padding: '.35rem .75rem',
-                      borderRadius: '20px',
-                      border: selected ? 'none' : '1px solid #ddd',
-                      background: selected ? '#cc3300' : 'white',
-                      color: selected ? 'white' : '#333',
-                      fontSize: '.85rem',
-                      fontWeight: selected ? '600' : '400',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {item}
-                  </button>
-                )
-              })}
+
+            {equipmentList.length === 0 && (
+              <p style={{ fontSize: '.85rem', color: '#888', marginBottom: '.6rem', marginTop: 0 }}>
+                No equipment added yet — add items below to build this project's equipment list.
+              </p>
+            )}
+
+            {equipmentList.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.4rem', marginBottom: '.75rem' }}>
+                {equipmentList.map(item => {
+                  const selected = fields.equipment_used.split(', ').filter(Boolean).includes(item)
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => toggleEquipment(item)}
+                      style={{
+                        padding: '.35rem .85rem',
+                        borderRadius: '20px',
+                        border: selected ? 'none' : '1px solid #ddd',
+                        background: selected ? '#cc3300' : 'white',
+                        color: selected ? 'white' : '#333',
+                        fontSize: '.85rem',
+                        fontWeight: selected ? '600' : '400',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {item}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Add new equipment to project */}
+            <div style={{ display: 'flex', gap: '.5rem', marginBottom: '.5rem' }}>
+              <input
+                type="text"
+                value={newEquipment}
+                onChange={e => setNewEquipment(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddEquipment())}
+                placeholder="Add equipment to this project..."
+                style={{ ...inputStyle, flex: 1 }}
+              />
+              <button
+                type="button"
+                onClick={handleAddEquipment}
+                disabled={addingEquipment || !newEquipment.trim()}
+                style={{ padding: '.75rem 1rem', background: '#1a1a1a', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '600', fontSize: '.85rem', cursor: 'pointer', whiteSpace: 'nowrap', opacity: !newEquipment.trim() ? 0.5 : 1 }}
+              >
+                {addingEquipment ? '...' : '+ Add'}
+              </button>
             </div>
+
             <input
               name="equipment_used"
-              style={inputStyle}
+              style={{ ...inputStyle, color: '#555', fontSize: '.9rem' }}
               value={fields.equipment_used}
               onChange={set('equipment_used')}
-              placeholder="Or type custom equipment..."
+              placeholder="Selected equipment appears here..."
             />
           </div>
           <div style={fieldStyle}>
@@ -374,13 +432,6 @@ function DailyReportInner() {
     </main>
   )
 }
-
-const EQUIPMENT_OPTIONS = [
-  'Excavator', 'Skid Steer', 'Backhoe', 'Bulldozer', 'Loader',
-  'Boom Truck', 'Line Truck', 'Dump Truck', 'Crane', 'Forklift',
-  'Drill Rig', 'Auger', 'Trencher', 'Compactor', 'Manlifter',
-  'Scissor Lift', 'Concrete Pump', 'Concrete Mixer', 'Generator', 'Compressor',
-]
 
 const fieldStyle = { marginBottom: '1.2rem' }
 const labelStyle = { display: 'block', fontWeight: '600', marginBottom: '.4rem', color: '#333' }
