@@ -212,7 +212,7 @@ export async function GET(request, { params }) {
   return new Response(pdfBytes, {
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': 'attachment; filename="pour-log-' + log.project_name + '-' + log.log_date + '.pdf"'
+      'Content-Disposition': 'inline; filename="pour-log-' + log.project_name + '-' + log.log_date + '.pdf"'
     }
   })
 }

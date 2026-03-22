@@ -88,7 +88,7 @@ export default async function ReportDetail({ params }) {
           )}
 
           <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem', flexWrap: 'wrap' }}>
-            <a href={'/api/pdf/' + report.id} style={{
+            <a href={'/api/pdf/' + report.id} target="_blank" rel="noopener noreferrer" style={{
               flex: 1,
               minWidth: '140px',
               padding: '.8rem 1rem',
@@ -100,7 +100,7 @@ export default async function ReportDetail({ params }) {
               fontSize: '.9rem',
               textAlign: 'center'
             }}>
-              Download PDF
+              View PDF
             </a>
             <Link href={'/reports/' + report.id + '/edit'} style={{
               flex: 1,

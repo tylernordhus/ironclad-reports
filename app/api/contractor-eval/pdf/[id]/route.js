@@ -133,7 +133,7 @@ export async function GET(request, { params }) {
   return new Response(pdfBytes, {
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="contractor-eval-${eval_.project_name || 'report'}-${eval_.inspection_date || 'unknown'}.pdf"`
+      'Content-Disposition': `inline; filename="contractor-eval-${eval_.project_name || 'report'}-${eval_.inspection_date || 'unknown'}.pdf"`
     }
   })
 }

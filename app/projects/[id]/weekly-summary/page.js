@@ -336,7 +336,7 @@ function WeeklySummaryInner() {
                         ×
                       </button>
                     )}
-                    <div style={{ position: 'absolute', left: '6px', bottom: photo.label || photo.date ? '42px' : '6px', background: 'rgba(0,0,0,0.6)', color: 'white', borderRadius: '999px', padding: '3px 8px', fontSize: '.65rem', fontWeight: '700', letterSpacing: '.02em' }}>
+                    <div style={{ position: 'absolute', left: '6px', bottom: '42px', background: 'rgba(0,0,0,0.6)', color: 'white', borderRadius: '999px', padding: '3px 8px', fontSize: '.65rem', fontWeight: '700', letterSpacing: '.02em' }}>
                       {photo.isExtra ? 'Added' : 'Daily Report'}
                     </div>
                     <div style={{ padding: '.3rem .5rem', background: '#f9f9f9' }} onClick={e => e.stopPropagation()}>

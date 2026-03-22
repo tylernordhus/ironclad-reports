@@ -115,7 +115,7 @@ export default async function ContractorEvalDetail({ params }) {
       )}
 
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '1rem' }}>
-        <a href={`/api/contractor-eval/pdf/${eval_.id}`} style={btnStyle('#cc3300', 'white')}>Download PDF</a>
+        <a href={`/api/contractor-eval/pdf/${eval_.id}`} target="_blank" rel="noopener noreferrer" style={btnStyle('#cc3300', 'white')}>View PDF</a>
         <Link href={`/contractor-evals/${eval_.id}/edit`} style={btnStyle('#1a1a1a', 'white')}>Edit Evaluation</Link>
         <DeleteButton
           action={`/api/delete/contractor-eval/${eval_.id}`}

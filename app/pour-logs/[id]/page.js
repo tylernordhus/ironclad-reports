@@ -130,7 +130,7 @@ export default async function PourLogDetail({ params }) {
       )}
 
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-        <a href={'/api/pour-log/pdf/' + log.id} style={{
+        <a href={'/api/pour-log/pdf/' + log.id} target="_blank" rel="noopener noreferrer" style={{
           flex: 1,
           minWidth: '140px',
           padding: '.8rem 1rem',
@@ -142,7 +142,7 @@ export default async function PourLogDetail({ params }) {
           fontSize: '.9rem',
           textAlign: 'center'
         }}>
-          Download PDF
+          View PDF
         </a>
         <Link href={'/pour-logs/' + log.id + '/edit'} style={{
           flex: 1,

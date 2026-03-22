@@ -243,7 +243,7 @@ export async function GET(request, { params }) {
   return new Response(pdfBytes, {
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="daily-report-${report.project_name}-${report.report_date}.pdf"`,
+      'Content-Disposition': `inline; filename="daily-report-${report.project_name}-${report.report_date}.pdf"`,
     },
   })
 }

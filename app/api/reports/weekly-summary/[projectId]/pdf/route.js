@@ -38,208 +38,51 @@ function wrapText(text, maxChars) {
   return lines.length ? lines : ['']
 }
 
-function parseTemperature(weather) {
-  const match = String(weather || '').match(/(-?\d+)\s*°?\s*F/i)
-  return match ? Number(match[1]) : null
-}
-
-function normalizeCondition(weather) {
-  const raw = String(weather || '').toLowerCase()
-  if (!raw) return 'Unknown'
-  if (raw.includes('thunder')) return 'Thunderstorm'
-  if (raw.includes('snow')) return 'Snow'
-  if (raw.includes('rain') || raw.includes('drizzle') || raw.includes('shower')) return 'Rain'
-  if (raw.includes('fog') || raw.includes('mist')) return 'Fog'
-  if (raw.includes('overcast') || raw.includes('cloud')) return 'Cloudy'
-  if (raw.includes('clear') || raw.includes('sun')) return 'Clear'
-  return 'Mixed'
-}
-
-function conditionAccent(condition) {
-  if (condition === 'Thunderstorm') return rgb(0.93, 0.73, 0.22)
-  if (condition === 'Rain') return rgb(0.2, 0.57, 0.82)
-  if (condition === 'Snow') return rgb(0.69, 0.82, 0.93)
-  if (condition === 'Fog') return rgb(0.62, 0.67, 0.74)
-  if (condition === 'Cloudy') return rgb(0.47, 0.58, 0.7)
-  if (condition === 'Clear') return rgb(0.95, 0.77, 0.26)
-  return rgb(0.45, 0.55, 0.68)
-}
-
-function averageTemp(items) {
-  const temps = items.map(item => parseTemperature(item.weather)).filter(temp => temp !== null)
-  if (!temps.length) return null
-  return Math.round(temps.reduce((sum, temp) => sum + temp, 0) / temps.length)
-}
-
-function formatDayLabel(dateStr) {
-  if (!dateStr) return ''
-  return new Date(`${dateStr}T12:00:00`).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-  })
-}
-
-function selectWeatherMoments(reports) {
-  if (reports.length <= 3) return reports
-  const mid = Math.floor((reports.length - 1) / 2)
-  return [reports[0], reports[mid], reports[reports.length - 1]]
-}
-
-function drawWeatherIcon(page, condition, x, y, scale = 1) {
-  const sun = rgb(0.97, 0.8, 0.31)
-  const cloudFill = rgb(0.95, 0.96, 0.98)
-  const cloudStroke = rgb(0.78, 0.81, 0.86)
-  const rain = rgb(0.22, 0.61, 0.87)
-
-  if (condition === 'Clear' || condition === 'Mixed') {
-    page.drawCircle({ x: x + 18 * scale, y: y + 18 * scale, size: 15 * scale, color: sun })
-  }
-
-  if (condition === 'Cloudy' || condition === 'Rain' || condition === 'Thunderstorm' || condition === 'Fog' || condition === 'Snow' || condition === 'Mixed') {
-    if (condition !== 'Cloudy' && condition !== 'Fog') {
-      page.drawCircle({ x: x + 14 * scale, y: y + 20 * scale, size: 12 * scale, color: sun, opacity: 0.9 })
-    }
-    page.drawCircle({ x: x + 22 * scale, y: y + 16 * scale, size: 12 * scale, color: cloudFill, borderColor: cloudStroke, borderWidth: 1 })
-    page.drawCircle({ x: x + 34 * scale, y: y + 20 * scale, size: 16 * scale, color: cloudFill, borderColor: cloudStroke, borderWidth: 1 })
-    page.drawCircle({ x: x + 48 * scale, y: y + 16 * scale, size: 12 * scale, color: cloudFill, borderColor: cloudStroke, borderWidth: 1 })
-    page.drawRectangle({ x: x + 18 * scale, y: y + 6 * scale, width: 34 * scale, height: 15 * scale, color: cloudFill, borderColor: cloudStroke, borderWidth: 1 })
-  }
-
-  if (condition === 'Rain' || condition === 'Thunderstorm') {
-    page.drawLine({ start: { x: x + 24 * scale, y: y + 2 * scale }, end: { x: x + 20 * scale, y: y - 8 * scale }, thickness: 2, color: rain })
-    page.drawLine({ start: { x: x + 36 * scale, y: y + 2 * scale }, end: { x: x + 32 * scale, y: y - 8 * scale }, thickness: 2, color: rain })
-    page.drawLine({ start: { x: x + 48 * scale, y: y + 2 * scale }, end: { x: x + 44 * scale, y: y - 8 * scale }, thickness: 2, color: rain })
-  }
-
-  if (condition === 'Thunderstorm') {
-    page.drawLine({ start: { x: x + 31 * scale, y: y + 2 * scale }, end: { x: x + 24 * scale, y: y - 9 * scale }, thickness: 2.5, color: sun })
-    page.drawLine({ start: { x: x + 24 * scale, y: y - 9 * scale }, end: { x: x + 33 * scale, y: y - 9 * scale }, thickness: 2.5, color: sun })
-    page.drawLine({ start: { x: x + 33 * scale, y: y - 9 * scale }, end: { x: x + 27 * scale, y: y - 19 * scale }, thickness: 2.5, color: sun })
-  }
-
-  if (condition === 'Fog') {
-    for (const offset of [0, -6, -12]) {
-      page.drawLine({ start: { x: x + 14 * scale, y: y + offset }, end: { x: x + 54 * scale, y: y + offset }, thickness: 1.5, color: cloudStroke })
-    }
-  }
-
-  if (condition === 'Snow') {
-    for (const cx of [24, 36, 48]) {
-      page.drawCircle({ x: x + cx * scale, y: y - 4 * scale, size: 2.5 * scale, color: rgb(0.73, 0.86, 0.97) })
-    }
-  }
-}
-
 function drawWeatherBand(page, reports, x, y, width, font, bold) {
-  const barColor = COLORS.brand
-  const panelFill = COLORS.card
-  const panelBorder = COLORS.line
-  const sectionHeight = 158
-  const headerHeight = 20
-  const innerY = y - sectionHeight
+  const halfW = (width - 8) / 2
+  const headerH = 18
+  const bodyH = 44
 
-  page.drawRectangle({ x, y: y - headerHeight, width, height: headerHeight, color: barColor })
-  page.drawText('WEATHER SNAPSHOT', { x: x + 12, y: y - 14, size: 10, font: bold, color: rgb(1, 1, 1) })
-  page.drawRectangle({ x, y: innerY, width, height: sectionHeight - headerHeight - 6, color: panelFill, borderColor: panelBorder, borderWidth: 1 })
+  // Header
+  page.drawRectangle({ x, y: y - headerH, width, height: headerH, color: COLORS.brand })
+  page.drawText('WEATHER', { x: x + 12, y: y - 13, size: 9, font: bold, color: rgb(1, 1, 1) })
 
-  const sampled = selectWeatherMoments(reports)
-  const delays = reports.filter(report => report.weather_delay)
-  const delayHours = delays.reduce((sum, report) => sum + (Number(report.weather_delay_hours) || 0), 0)
-  const avgTemp = averageTemp(reports)
-  const primaryCondition = normalizeCondition(
-    reports.find(report => normalizeCondition(report.weather) !== 'Unknown')?.weather
-  )
-  const metricsTop = y - 38
+  // Compute summary values
+  const temps = reports.map(r => {
+    const m = String(r.weather || '').match(/(-?\d+)\s*°?\s*F/i)
+    return m ? Number(m[1]) : null
+  }).filter(t => t !== null)
+  const avgTemp = temps.length ? Math.round(temps.reduce((a, b) => a + b, 0) / temps.length) : null
 
-  page.drawText(avgTemp !== null ? `${avgTemp}°F avg temp` : 'Weather logged', {
-    x: x + 14,
-    y: metricsTop,
-    size: 18,
-    font: bold,
-    color: rgb(0.13, 0.17, 0.22),
-  })
-  page.drawText(`${primaryCondition} pattern this week`, {
-    x: x + 14,
-    y: metricsTop - 14,
-    size: 9,
-    font,
-    color: rgb(0.43, 0.48, 0.55),
-  })
+  const raw = String(reports.find(r => r.weather)?.weather || '').toLowerCase()
+  let condition = 'Unknown'
+  if (raw.includes('thunder')) condition = 'Thunderstorm'
+  else if (raw.includes('snow')) condition = 'Snow'
+  else if (raw.includes('rain') || raw.includes('drizzle')) condition = 'Rain'
+  else if (raw.includes('fog') || raw.includes('mist')) condition = 'Fog'
+  else if (raw.includes('overcast') || raw.includes('cloud')) condition = 'Cloudy'
+  else if (raw.includes('clear') || raw.includes('sun')) condition = 'Clear'
+  else if (raw) condition = 'Mixed'
 
-  const chipText = delays.length
-    ? `${delays.length} weather delay${delays.length === 1 ? '' : 's'}${delayHours ? ` · ${delayHours} hrs` : ''}`
-    : 'No weather delays logged'
-  const chipWidth = Math.min(width * 0.34, chipText.length * 5.3 + 18)
-  page.drawRectangle({
-    x: x + width - chipWidth - 14,
-    y: metricsTop - 6,
-    width: chipWidth,
-    height: 22,
-    color: delays.length ? rgb(0.99, 0.94, 0.88) : rgb(0.92, 0.97, 0.93),
-    borderColor: delays.length ? rgb(0.93, 0.72, 0.43) : rgb(0.61, 0.79, 0.64),
-    borderWidth: 1,
-  })
-  page.drawText(chipText, {
-    x: x + width - chipWidth - 5,
-    y: metricsTop + 1,
-    size: 8,
-    font: bold,
-    color: delays.length ? rgb(0.63, 0.39, 0.1) : rgb(0.2, 0.47, 0.23),
-  })
+  const delays = reports.filter(r => r.weather_delay)
+  const delayHours = delays.reduce((sum, r) => sum + (Number(r.weather_delay_hours) || 0), 0)
 
-  const cardsY = innerY + 16
-  const cardGap = 10
-  const cardWidth = (width - 28 - cardGap * 2) / 3
-  sampled.forEach((report, index) => {
-    const cardX = x + 14 + index * (cardWidth + cardGap)
-    const condition = normalizeCondition(report.weather)
-    const accent = conditionAccent(condition)
-    const temp = parseTemperature(report.weather)
-    page.drawRectangle({
-      x: cardX,
-      y: cardsY,
-      width: cardWidth,
-      height: 74,
-      color: rgb(1, 1, 1),
-      borderColor: panelBorder,
-      borderWidth: 1,
-    })
-    page.drawRectangle({ x: cardX, y: cardsY + 68, width: cardWidth, height: 6, color: accent })
-    page.drawText(formatDayLabel(report.report_date), {
-      x: cardX + 12,
-      y: cardsY + 56,
-      size: 9,
-      font: bold,
-      color: rgb(0.29, 0.34, 0.4),
-    })
-    drawWeatherIcon(page, condition, cardX + 10, cardsY + 22, 0.85)
-    page.drawText(temp !== null ? `${temp}°F` : '--', {
-      x: cardX + 74,
-      y: cardsY + 38,
-      size: 18,
-      font: bold,
-      color: rgb(0.14, 0.17, 0.22),
-    })
-    page.drawText(condition, {
-      x: cardX + 74,
-      y: cardsY + 24,
-      size: 8,
-      font,
-      color: rgb(0.43, 0.48, 0.55),
-    })
-    const detail = report.weather_delay
-      ? `Delay${report.weather_delay_hours ? ` · ${report.weather_delay_hours} hrs` : ''}`
-      : 'No delay logged'
-    page.drawText(detail, {
-      x: cardX + 12,
-      y: cardsY + 9,
-      size: 7.5,
-      font,
-      color: report.weather_delay ? rgb(0.69, 0.38, 0.06) : rgb(0.44, 0.58, 0.47),
-    })
-  })
+  // Left cell: conditions
+  page.drawRectangle({ x, y: y - headerH - bodyH, width: halfW, height: bodyH, color: rgb(1,1,1), borderColor: COLORS.line, borderWidth: 1 })
+  page.drawText('CONDITIONS', { x: x + 10, y: y - headerH - 14, size: 7.5, font: bold, color: COLORS.muted })
+  const condText = avgTemp !== null ? `${avgTemp}°F avg · ${condition}` : (condition !== 'Unknown' ? condition : 'Not recorded')
+  page.drawText(condText, { x: x + 10, y: y - headerH - 32, size: 11, font, color: COLORS.ink })
 
-  return innerY - 18
+  // Right cell: delay status
+  const delayText = delays.length
+    ? `${delays.length} delay${delays.length !== 1 ? 's' : ''}${delayHours ? ` · ${delayHours} hrs lost` : ''}`
+    : 'No Weather Delays'
+  const delayColor = delays.length ? COLORS.warn : COLORS.success
+  page.drawRectangle({ x: x + halfW + 8, y: y - headerH - bodyH, width: halfW, height: bodyH, color: rgb(1,1,1), borderColor: COLORS.line, borderWidth: 1 })
+  page.drawText('WEATHER DELAYS', { x: x + halfW + 18, y: y - headerH - 14, size: 7.5, font: bold, color: COLORS.muted })
+  page.drawText(delayText, { x: x + halfW + 18, y: y - headerH - 32, size: 11, font: bold, color: delayColor })
+
+  return y - headerH - bodyH - 18
 }
 
 export async function POST(request, { params }) {
