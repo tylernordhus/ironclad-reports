@@ -6,6 +6,14 @@ const supabase = createClient(
   process.env.SUPABASE_SECRET_KEY
 )
 
+const COLORS = {
+  ink: rgb(0.12, 0.15, 0.19),
+  body: rgb(0.28, 0.33, 0.39),
+  muted: rgb(0.46, 0.5, 0.56),
+  line: rgb(0.87, 0.89, 0.92),
+  brand: rgb(0.16, 0.31, 0.45),
+}
+
 function formatDate(d) {
   if (!d) return '-'
   const [y, m, day] = d.split('-')
@@ -36,9 +44,9 @@ export async function GET(request, { params }) {
 
   const addPage = () => {
     const p = pdfDoc.addPage([612, 792])
-    p.drawRectangle({ x: 0, y: 792 - 70, width: 612, height: 70, color: rgb(0.8, 0.2, 0) })
+    p.drawRectangle({ x: 0, y: 792 - 70, width: 612, height: 70, color: COLORS.brand })
     p.drawText('CONTRACTOR EVALUATION', { x: 40, y: 792 - 38, size: 18, font: boldFont, color: rgb(1, 1, 1) })
-    p.drawText(companyName, { x: 40, y: 792 - 58, size: 10, font, color: rgb(1, 1, 1) })
+    p.drawText(companyName, { x: 40, y: 792 - 58, size: 10, font, color: rgb(0.84, 0.9, 0.96) })
     return p
   }
 
@@ -47,22 +55,22 @@ export async function GET(request, { params }) {
 
   const drawRow = (label, value) => {
     if (y < 60) { page = addPage(); y = 792 - 90 }
-    page.drawText(label + ':', { x: 40, y, size: 9, font: boldFont, color: rgb(0.4, 0.4, 0.4) })
-    page.drawText(String(value || '-'), { x: 200, y, size: 9, font, color: rgb(0.1, 0.1, 0.1) })
+    page.drawText(label + ':', { x: 40, y, size: 9, font: boldFont, color: COLORS.muted })
+    page.drawText(String(value || '-'), { x: 200, y, size: 9, font, color: COLORS.ink })
     y -= 16
   }
 
   const drawSectionHeader = (text) => {
     if (y < 80) { page = addPage(); y = 792 - 90 }
     y -= 8
-    page.drawRectangle({ x: 40, y: y - 4, width: 532, height: 18, color: rgb(0.95, 0.95, 0.95) })
-    page.drawText(text, { x: 44, y, size: 10, font: boldFont, color: rgb(0.2, 0.2, 0.2) })
+    page.drawRectangle({ x: 40, y: y - 4, width: 532, height: 18, color: COLORS.brand })
+    page.drawText(text, { x: 44, y, size: 10, font: boldFont, color: rgb(1, 1, 1) })
     y -= 22
   }
 
   const drawCheck = (label, value) => {
     if (y < 60) { page = addPage(); y = 792 - 90 }
-    page.drawText(label, { x: 44, y, size: 9, font, color: rgb(0.2, 0.2, 0.2) })
+    page.drawText(label, { x: 44, y, size: 9, font, color: COLORS.body })
     const val = yn(value)
     const color = value === true ? rgb(0.16, 0.5, 0.16) : value === false ? rgb(0.8, 0.2, 0) : rgb(0.6, 0.6, 0.6)
     page.drawText(val, { x: 500, y, size: 9, font: boldFont, color })
@@ -116,6 +124,9 @@ export async function GET(request, { params }) {
   drawSectionHeader('INSPECTOR SIGNATURE')
   drawRow('Signature', eval_.inspector_signature)
   drawRow('Date', formatDate(eval_.signature_date))
+
+  page.drawLine({ start: { x: 40, y: 28 }, end: { x: 572, y: 28 }, thickness: 0.7, color: COLORS.line })
+  page.drawText(companyName, { x: 40, y: 16, size: 8, font, color: COLORS.muted })
 
   const pdfBytes = await pdfDoc.save()
 

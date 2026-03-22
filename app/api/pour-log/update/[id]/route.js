@@ -1,18 +1,76 @@
 import { createClient } from '@supabase/supabase-js'
+import sharp from 'sharp'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SECRET_KEY
 )
 
+async function uploadNewPhotos(files) {
+  const photo_urls = []
+
+  for (const photo of files) {
+    const bytes = await photo.arrayBuffer()
+    let buffer = Buffer.from(bytes)
+    let safeName = photo.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+    let contentType = photo.type || 'image/jpeg'
+
+    const isHeic = safeName.toLowerCase().endsWith('.heic') ||
+      safeName.toLowerCase().endsWith('.heif')
+    if (isHeic) {
+      buffer = await sharp(buffer).jpeg({ quality: 85 }).toBuffer()
+      safeName = safeName.replace(/\.(heic|heif)$/i, '.jpg')
+      contentType = 'image/jpeg'
+    }
+
+    const path = `pour-logs/${Date.now()}_${safeName}`
+    const { error: uploadError } = await supabase.storage
+      .from('report-photos')
+      .upload(path, buffer, { contentType })
+
+    if (uploadError) {
+      console.error('Photo upload error:', uploadError)
+      continue
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('report-photos')
+      .getPublicUrl(path)
+
+    photo_urls.push(publicUrl)
+  }
+
+  return photo_urls
+}
+
 export async function POST(request, { params }) {
   try {
-    const body = await request.json()
-    const { project_name, log_date, weather, ambient_temp, concrete_supplier, submitted_by, foundations, trucks } = body
+    const formData = await request.formData()
+    const project_name = formData.get('project_name')
+    const log_date = formData.get('log_date')
+    const weather = formData.get('weather')
+    const ambient_temp = formData.get('ambient_temp')
+    const concrete_supplier = formData.get('concrete_supplier')
+    const submitted_by = formData.get('submitted_by')
+    const foundations = JSON.parse(formData.get('foundations') || '[]')
+    const trucks = JSON.parse(formData.get('trucks') || '[]')
+    const newPhotoFiles = formData.getAll('add_photos').filter(file => file && file.size > 0)
+
+    const { data: existing } = await supabase
+      .from('pour_logs')
+      .select('photo_urls')
+      .eq('id', params.id)
+      .single()
+
+    let photo_urls = existing?.photo_urls || []
+    if (newPhotoFiles.length > 0) {
+      const uploaded = await uploadNewPhotos(newPhotoFiles)
+      photo_urls = [...photo_urls, ...uploaded]
+    }
 
     const { error: logError } = await supabase
       .from('pour_logs')
-      .update({ project_name, log_date, weather, ambient_temp, concrete_supplier, submitted_by })
+      .update({ project_name, log_date, weather, ambient_temp, concrete_supplier, submitted_by, photo_urls: photo_urls.length > 0 ? photo_urls : null })
       .eq('id', params.id)
 
     if (logError) throw logError

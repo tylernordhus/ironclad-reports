@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useState, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -44,8 +44,9 @@ function WeeklySummaryInner() {
   const [projectName, setProjectName] = useState('')
   const [reportCount, setReportCount] = useState(0)
   const [summary, setSummary] = useState('')
-  const [allPhotos, setAllPhotos] = useState([]) // [{ id, url, label, date }]
+  const [allPhotos, setAllPhotos] = useState([]) // [{ id, url, label, date, isExtra }]
   const [selectedIds, setSelectedIds] = useState(new Set())
+  const nextExtraId = useRef(1000)
   const [generated, setGenerated] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -116,6 +117,38 @@ function WeeklySummaryInner() {
 
   function deselectAll() {
     setSelectedIds(new Set())
+  }
+
+  async function handleExtraPhotos(e) {
+    const files = Array.from(e.target.files)
+    if (!files.length) return
+    try {
+      const newPhotos = []
+      for (const file of files) {
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = ev => resolve(ev.target.result)
+          reader.onerror = () => reject(new Error(`Failed to read ${file.name}`))
+          reader.readAsDataURL(file)
+        })
+        const id = nextExtraId.current++
+        newPhotos.push({ id, url: dataUrl, label: file.name, date: '', isExtra: true })
+      }
+      setAllPhotos(prev => [...prev, ...newPhotos])
+      setSelectedIds(prev => {
+        const next = new Set(prev)
+        newPhotos.forEach(p => next.add(p.id))
+        return next
+      })
+    } catch {
+      alert('One or more photos could not be added. Please try again.')
+    }
+    e.target.value = ''
+  }
+
+  function removeExtraPhoto(id) {
+    setAllPhotos(prev => prev.filter(p => p.id !== id))
+    setSelectedIds(prev => { const next = new Set(prev); next.delete(id); return next })
   }
 
   async function downloadPdf() {
@@ -229,13 +262,20 @@ function WeeklySummaryInner() {
                 <div style={{ fontSize: '.8rem', color: '#999', marginTop: '.1rem' }}>
                   {allPhotos.length === 0 ? 'No photos this week' : `${selectedIds.size} of ${allPhotos.length} selected`}
                 </div>
+                <div style={{ fontSize: '.75rem', color: '#aaa', marginTop: '.2rem' }}>
+                  Daily report photos are loaded automatically. Add extra photos if the weekly report needs more coverage.
+                </div>
               </div>
-              {allPhotos.length > 0 && (
-                <div style={{ display: 'flex', gap: '.5rem' }}>
+              <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+                {allPhotos.length > 0 && <>
                   <button onClick={selectAll} disabled={allSelected} style={{ ...smallBtn, opacity: allSelected ? 0.4 : 1 }}>Select All</button>
                   <button onClick={deselectAll} disabled={selectedIds.size === 0} style={{ ...smallBtn, opacity: selectedIds.size === 0 ? 0.4 : 1 }}>Deselect All</button>
-                </div>
-              )}
+                </>}
+                <label style={{ ...smallBtn, background: '#1a1a1a', color: 'white', cursor: 'pointer' }}>
+                  + Add Photos
+                  <input type="file" accept="image/*" multiple onChange={handleExtraPhotos} style={{ display: 'none' }} />
+                </label>
+              </div>
             </div>
 
             {allPhotos.length === 0 && (
@@ -281,6 +321,19 @@ function WeeklySummaryInner() {
                       fontWeight: '700',
                     }}>
                       {selected ? '✓' : ''}
+                    </div>
+                    {/* Remove button for extra photos */}
+                    {photo.isExtra && (
+                      <button
+                        onClick={ev => { ev.stopPropagation(); removeExtraPhoto(photo.id) }}
+                        style={{ position: 'absolute', top: '6px', left: '6px', width: '22px', height: '22px', borderRadius: '50%', background: 'rgba(0,0,0,0.55)', border: 'none', color: 'white', fontSize: '14px', lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        aria-label="Remove added photo"
+                      >
+                        ×
+                      </button>
+                    )}
+                    <div style={{ position: 'absolute', left: '6px', bottom: photo.label || photo.date ? '42px' : '6px', background: 'rgba(0,0,0,0.6)', color: 'white', borderRadius: '999px', padding: '3px 8px', fontSize: '.65rem', fontWeight: '700', letterSpacing: '.02em' }}>
+                      {photo.isExtra ? 'Added' : 'Daily Report'}
                     </div>
                     {(photo.label || photo.date) && (
                       <div style={{ padding: '.3rem .5rem', background: '#f9f9f9' }}>

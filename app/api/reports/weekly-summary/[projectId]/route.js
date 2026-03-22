@@ -23,7 +23,7 @@ export async function GET(request, { params }) {
 
     const { data: reports } = await supabase
       .from('reports')
-      .select('report_date, crew_count, work_completed, equipment_used, safety_issues, weather, submitted_by, photo_urls, photo_labels')
+      .select('report_date, crew_count, work_completed, equipment_used, safety_issues, weather, submitted_by, weather_delay, weather_delay_hours, on_schedule, photo_urls, photo_labels')
       .eq('project_id', params.projectId)
       .eq('user_id', user_id)
       .gte('report_date', startDate)

@@ -62,22 +62,11 @@ export default function EditPourLog() {
     e.preventDefault()
     setSubmitting(true)
     const formData = new FormData(e.target)
-
-    const payload = {
-      project_name: formData.get('project_name'),
-      log_date: formData.get('log_date'),
-      weather: formData.get('weather'),
-      ambient_temp: formData.get('ambient_temp'),
-      concrete_supplier: formData.get('concrete_supplier'),
-      submitted_by: formData.get('submitted_by'),
-      foundations,
-      trucks
-    }
-
+    formData.set('foundations', JSON.stringify(foundations))
+    formData.set('trucks', JSON.stringify(trucks))
     const res = await fetch(`/api/pour-log/update/${id}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: formData
     })
 
     if (res.ok) {
@@ -132,6 +121,25 @@ export default function EditPourLog() {
           <div style={fieldStyle}>
             <label style={labelStyle}>Submitted By</label>
             <input name="submitted_by" required style={inputStyle} defaultValue={log.submitted_by} />
+          </div>
+          {log.photo_urls && log.photo_urls.length > 0 && (
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Existing Photos</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '.75rem' }}>
+                {log.photo_urls.map((url, i) => (
+                  <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                    <img src={url} alt={`Photo ${i + 1}`} style={{ width: '100%', height: '110px', objectFit: 'cover', borderRadius: '6px', display: 'block' }} />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Add Photos</label>
+            <input name="add_photos" type="file" accept="image/*" multiple style={inputStyle} />
+            <div style={{ fontSize: '.8rem', color: '#888', marginTop: '.35rem' }}>
+              New photos will be appended to this pour log.
+            </div>
           </div>
         </div>
 

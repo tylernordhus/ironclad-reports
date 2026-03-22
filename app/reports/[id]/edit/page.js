@@ -50,7 +50,7 @@ export default async function EditReport({ params }) {
           </p>
         </div>
 
-        <form action={`/api/update/${report.id}`} method="POST">
+        <form action={`/api/update/${report.id}`} method="POST" encType="multipart/form-data">
           <div style={{ marginBottom: '1.2rem' }}>
             <label style={{ display: 'block', fontWeight: '600', marginBottom: '.4rem', color: '#333' }}>
               Project Name
@@ -99,6 +99,32 @@ export default async function EditReport({ params }) {
               Submitted By
             </label>
             <input name="submitted_by" required style={inputStyle} defaultValue={report.submitted_by} />
+          </div>
+          {report.photo_urls && report.photo_urls.length > 0 && (
+            <div style={{ marginBottom: '1.2rem' }}>
+              <label style={{ display: 'block', fontWeight: '600', marginBottom: '.6rem', color: '#333' }}>
+                Existing Photos
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '.75rem' }}>
+                {report.photo_urls.map((url, i) => (
+                  <div key={i}>
+                    <img src={url} alt={report.photo_labels?.[i] || `Photo ${i + 1}`} style={{ width: '100%', height: '110px', objectFit: 'cover', borderRadius: '6px', display: 'block' }} />
+                    {report.photo_labels?.[i] && (
+                      <div style={{ fontSize: '.75rem', color: '#666', marginTop: '.25rem' }}>{report.photo_labels[i]}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <div style={{ marginBottom: '1.2rem' }}>
+            <label style={{ display: 'block', fontWeight: '600', marginBottom: '.4rem', color: '#333' }}>
+              Add Photos
+            </label>
+            <input name="add_photos" type="file" accept="image/*" multiple style={inputStyle} />
+            <div style={{ fontSize: '.8rem', color: '#888', marginTop: '.35rem' }}>
+              New photos will be added to the report. Existing photos stay attached.
+            </div>
           </div>
           <button type="submit" style={{
             width: '100%',
