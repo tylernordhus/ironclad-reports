@@ -447,7 +447,7 @@ function DailyReportInner() {
                     <input
                       type="file"
                       accept="image/*"
-                      capture="environment"
+
                       ref={el => { fileRefs.current[entry.id] = el }}
                       style={{ flex: 1, fontSize: '.85rem' }}
                     />
