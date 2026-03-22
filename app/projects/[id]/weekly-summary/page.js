@@ -151,6 +151,10 @@ function WeeklySummaryInner() {
     setSelectedIds(prev => { const next = new Set(prev); next.delete(id); return next })
   }
 
+  function setPhotoLabel(id, label) {
+    setAllPhotos(prev => prev.map(p => p.id === id ? { ...p, label } : p))
+  }
+
   async function downloadPdf() {
     setPdfLoading(true)
     try {
@@ -335,12 +339,15 @@ function WeeklySummaryInner() {
                     <div style={{ position: 'absolute', left: '6px', bottom: photo.label || photo.date ? '42px' : '6px', background: 'rgba(0,0,0,0.6)', color: 'white', borderRadius: '999px', padding: '3px 8px', fontSize: '.65rem', fontWeight: '700', letterSpacing: '.02em' }}>
                       {photo.isExtra ? 'Added' : 'Daily Report'}
                     </div>
-                    {(photo.label || photo.date) && (
-                      <div style={{ padding: '.3rem .5rem', background: '#f9f9f9' }}>
-                        {photo.label && <div style={{ fontSize: '.75rem', fontWeight: '600', color: '#333', lineHeight: '1.3' }}>{photo.label}</div>}
-                        {photo.date && <div style={{ fontSize: '.7rem', color: '#999' }}>{fmt(photo.date)}</div>}
-                      </div>
-                    )}
+                    <div style={{ padding: '.3rem .5rem', background: '#f9f9f9' }} onClick={e => e.stopPropagation()}>
+                      <input
+                        value={photo.label}
+                        onChange={e => setPhotoLabel(photo.id, e.target.value)}
+                        placeholder="Add label…"
+                        style={{ width: '100%', fontSize: '.75rem', fontWeight: '600', color: '#333', border: 'none', background: 'transparent', outline: 'none', padding: 0, boxSizing: 'border-box' }}
+                      />
+                      {photo.date && <div style={{ fontSize: '.7rem', color: '#999', marginTop: '.1rem' }}>{fmt(photo.date)}</div>}
+                    </div>
                   </div>
                 )
               })}
