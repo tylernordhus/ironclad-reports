@@ -151,7 +151,7 @@ export async function GET(request, { params }) {
   const cardW = (W - margin * 2 - 16) / 3
   drawMetricCard(page1, margin, y - 54, cardW, 'Submitted By', report.submitted_by, COLORS.brand)
   drawMetricCard(page1, margin + cardW + 8, y - 54, cardW, 'Crew On Site', report.crew_count, COLORS.brand)
-  drawMetricCard(page1, margin + (cardW + 8) * 2, y - 54, cardW, 'Schedule', report.on_schedule === false ? 'Behind Schedule' : 'On Schedule', report.on_schedule === false ? COLORS.warn : COLORS.success)
+  drawMetricCard(page1, margin + (cardW + 8) * 2, y - 54, cardW, 'Schedule', report.on_schedule === false ? 'Behind Schedule' : 'On Schedule', report.on_schedule === false ? rgb(0.75, 0.15, 0.15) : COLORS.success)
   y -= 76
 
   // Weather row — two cells side by side
