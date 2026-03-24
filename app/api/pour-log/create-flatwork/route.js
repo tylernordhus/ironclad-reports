@@ -20,13 +20,8 @@ export async function POST(request) {
       ambient_temp,
       concrete_supplier,
       submitted_by,
-      area_location,
-      square_footage,
-      thickness,
-      total_yards,
-      finish_type,
-      general_notes,
       photo_urls,
+      sections,
       trucks
     } = body
 
@@ -41,12 +36,6 @@ export async function POST(request) {
         ambient_temp,
         concrete_supplier,
         submitted_by,
-        area_location,
-        square_footage,
-        thickness,
-        total_yards,
-        finish_type,
-        general_notes,
         photo_urls: photo_urls && photo_urls.length > 0 ? photo_urls : null,
         user_id
       })
@@ -55,6 +44,23 @@ export async function POST(request) {
 
     if (logError) throw logError
 
+    if (sections && sections.length > 0) {
+      const { error: sectionsError } = await supabase
+        .from('pour_log_foundations')
+        .insert(
+          sections.map(s => ({
+            pour_log_id: pourLog.id,
+            foundation_id: s.foundation_id,
+            finish_type: s.section_type,      // 'Slab' or 'Spread Footer'
+            square_footage: s.square_footage || null,
+            total_depth: s.total_depth || null,  // thickness
+            estimated_yards: s.estimated_yards || null,
+            notes: s.notes || null
+          }))
+        )
+      if (sectionsError) throw sectionsError
+    }
+
     if (trucks && trucks.length > 0) {
       const { error: truckError } = await supabase
         .from('pour_log_trucks')
@@ -62,16 +68,16 @@ export async function POST(request) {
           trucks.map(t => ({
             pour_log_id: pourLog.id,
             truck_number: t.truck_number,
-            arrival_time: t.arrival_time,
-            pour_start: t.pour_start,
-            pour_complete: t.pour_complete,
-            yards: t.yards,
-            concrete_temp: t.concrete_temp,
-            slump: t.slump,
-            air_content: t.air_content,
-            water_added: t.water_added,
-            cylinders_cast: t.cylinders_cast,
-            notes: t.notes
+            arrival_time: t.arrival_time || null,
+            pour_start: t.pour_start || null,
+            pour_complete: t.pour_complete || null,
+            yards: t.yards || null,
+            concrete_temp: t.concrete_temp || null,
+            slump: t.slump || null,
+            air_content: t.air_content || null,
+            water_added: t.water_added || null,
+            cylinders_cast: t.cylinders_cast || null,
+            notes: t.notes || null
           }))
         )
       if (truckError) throw truckError

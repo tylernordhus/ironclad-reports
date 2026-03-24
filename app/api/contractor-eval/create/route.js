@@ -19,7 +19,7 @@ export async function POST(request) {
     const user_id = await getUserId()
     const f = (name) => formData.get(name)
 
-    const { error } = await supabase.from('contractor_evaluations').insert({
+    const { data: created, error } = await supabase.from('contractor_evaluations').insert({
       project_id: f('project_id') || null,
       inspector_name: f('inspector_name'),
       inspection_date: f('inspection_date') || null,
@@ -52,13 +52,12 @@ export async function POST(request) {
       inspector_signature: f('inspector_signature'),
       signature_date: f('signature_date') || null,
       user_id,
-    })
+    }).select().single()
 
     if (error) throw error
 
-    const project_id = f('project_id')
     return NextResponse.redirect(
-      new URL(project_id ? `/projects/${project_id}` : '/reports', request.url),
+      new URL(`/contractor-evals/${created.id}`, request.url),
       303
     )
   } catch (err) {

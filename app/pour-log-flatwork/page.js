@@ -13,6 +13,17 @@ export default function PourLogFlatwork() {
     if (!project_id) router.replace('/select-project?for=pour-log-flatwork')
   }, [project_id, router])
 
+  const [logDate, setLogDate] = useState('')
+  const [weather, setWeather] = useState('')
+  const [ambientTemp, setAmbientTemp] = useState('')
+  const [weatherLoading, setWeatherLoading] = useState(false)
+  const [concreteSupplier, setConcreteSupplier] = useState('')
+  const [submittedBy, setSubmittedBy] = useState('')
+
+  const [sections, setSections] = useState([
+    { section_type: 'Slab', foundation_id: '', square_footage: '', total_depth: '', estimated_yards: '', notes: '' }
+  ])
+
   const [trucks, setTrucks] = useState([
     {
       truck_number: '1',
@@ -31,6 +42,33 @@ export default function PourLogFlatwork() {
 
   const [submitting, setSubmitting] = useState(false)
   const [photoFiles, setPhotoFiles] = useState([])
+
+  // Auto-fill weather when date is selected
+  useEffect(() => {
+    if (!project_id || !logDate) return
+    setWeatherLoading(true)
+    fetch(`/api/weather/${project_id}?date=${logDate}`)
+      .then(r => r.json())
+      .then(({ weather: w }) => {
+        if (w) setWeather(prev => prev || w)
+        setWeatherLoading(false)
+      })
+      .catch(() => setWeatherLoading(false))
+  }, [project_id, logDate])
+
+  const addSection = () => {
+    setSections([...sections, { section_type: 'Slab', foundation_id: '', square_footage: '', total_depth: '', estimated_yards: '', notes: '' }])
+  }
+
+  const updateSection = (index, field, value) => {
+    const updated = [...sections]
+    updated[index][field] = value
+    setSections(updated)
+  }
+
+  const removeSection = (index) => {
+    setSections(sections.filter((_, i) => i !== index))
+  }
 
   const addTruck = () => {
     setTrucks([...trucks, {
@@ -52,6 +90,13 @@ export default function PourLogFlatwork() {
     const updated = [...trucks]
     updated[index][field] = value
     setTrucks(updated)
+  }
+
+  const setNow = (truckIndex, field) => {
+    const now = new Date()
+    const hh = String(now.getHours()).padStart(2, '0')
+    const mm = String(now.getMinutes()).padStart(2, '0')
+    updateTruck(truckIndex, field, `${hh}:${mm}`)
   }
 
   const removeTruck = (index) => {
@@ -79,19 +124,14 @@ export default function PourLogFlatwork() {
     const payload = {
       project_id,
       project_name: formData.get('project_name'),
-      log_date: formData.get('log_date'),
+      log_date: logDate,
       log_type: 'flatwork',
-      weather: formData.get('weather'),
-      ambient_temp: formData.get('ambient_temp'),
-      concrete_supplier: formData.get('concrete_supplier'),
-      submitted_by: formData.get('submitted_by'),
-      area_location: formData.get('area_location'),
-      square_footage: formData.get('square_footage'),
-      thickness: formData.get('thickness'),
-      total_yards: formData.get('total_yards'),
-      finish_type: formData.get('finish_type'),
-      general_notes: formData.get('general_notes'),
+      weather,
+      ambient_temp: ambientTemp,
+      concrete_supplier: concreteSupplier,
+      submitted_by: submittedBy,
       photo_urls,
+      sections,
       trucks
     }
 
@@ -102,7 +142,8 @@ export default function PourLogFlatwork() {
     })
 
     if (res.ok) {
-      window.location.href = project_id ? '/projects/' + project_id : '/'
+      const data = await res.json()
+      router.push('/pour-logs/' + data.id)
     } else {
       alert('Something went wrong. Please try again.')
       setSubmitting(false)
@@ -130,6 +171,7 @@ export default function PourLogFlatwork() {
 
       <form onSubmit={handleSubmit}>
 
+        {/* JOB INFO */}
         <div style={sectionStyle}>
           <div style={sectionHeaderStyle}>Job Info</div>
 
@@ -139,68 +181,162 @@ export default function PourLogFlatwork() {
           </div>
           <div style={fieldStyle}>
             <label style={labelStyle}>Date</label>
-            <input name="log_date" type="date" required style={inputStyle} />
+            <input
+              type="date"
+              required
+              style={inputStyle}
+              value={logDate}
+              onChange={e => setLogDate(e.target.value)}
+            />
           </div>
           <div style={rowStyle}>
             <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Weather</label>
-              <input name="weather" style={inputStyle} placeholder="e.g. Sunny" />
+              <label style={labelStyle}>
+                Weather {weatherLoading && <span style={{ fontWeight: '400', color: '#888' }}>— fetching…</span>}
+              </label>
+              <input
+                style={inputStyle}
+                placeholder="Auto-filled from date"
+                value={weather}
+                onChange={e => setWeather(e.target.value)}
+              />
             </div>
             <div style={{ flex: 1 }}>
               <label style={labelStyle}>Ambient Temp</label>
-              <input name="ambient_temp" style={inputStyle} placeholder="e.g. 75°F" />
+              <input
+                style={inputStyle}
+                placeholder="e.g. 75°F"
+                value={ambientTemp}
+                onChange={e => setAmbientTemp(e.target.value)}
+              />
             </div>
           </div>
           <div style={fieldStyle}>
             <label style={labelStyle}>Concrete Supplier</label>
-            <input name="concrete_supplier" style={inputStyle} placeholder="e.g. Central Concrete" />
+            <input
+              style={inputStyle}
+              placeholder="e.g. Central Concrete"
+              value={concreteSupplier}
+              onChange={e => setConcreteSupplier(e.target.value)}
+            />
           </div>
           <div style={fieldStyle}>
             <label style={labelStyle}>Submitted By</label>
-            <input name="submitted_by" required style={inputStyle} placeholder="Your name" />
+            <input
+              required
+              style={inputStyle}
+              placeholder="Your name"
+              value={submittedBy}
+              onChange={e => setSubmittedBy(e.target.value)}
+            />
           </div>
         </div>
 
+        {/* FOUNDATION INFO */}
         <div style={sectionStyle}>
-          <div style={sectionHeaderStyle}>Pour Info</div>
+          <div style={sectionHeaderStyle}>Foundation Info</div>
 
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Area / Location</label>
-            <input name="area_location" style={inputStyle} placeholder="e.g. Building pad grid A-D" />
-          </div>
-          <div style={rowStyle}>
-            <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Square Footage</label>
-              <input name="square_footage" style={inputStyle} placeholder="e.g. 2400" />
+          {sections.map((s, i) => (
+            <div key={i} style={cardStyle}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <div style={{ fontWeight: '700', color: '#1a1a1a' }}>Section {i + 1}</div>
+                {sections.length > 1 && (
+                  <button type="button" onClick={() => removeSection(i)} style={removeBtnStyle}>
+                    Remove
+                  </button>
+                )}
+              </div>
+
+              {/* Slab / Spread Footer toggle */}
+              <div style={fieldStyle}>
+                <label style={labelStyle}>Type</label>
+                <div style={{ display: 'flex', gap: '.5rem' }}>
+                  {['Slab', 'Spread Footer'].map(type => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => updateSection(i, 'section_type', type)}
+                      style={{
+                        flex: 1,
+                        padding: '.65rem',
+                        borderRadius: '6px',
+                        border: '2px solid',
+                        borderColor: s.section_type === type ? '#cc3300' : '#ddd',
+                        background: s.section_type === type ? '#cc3300' : 'white',
+                        color: s.section_type === type ? 'white' : '#666',
+                        fontWeight: '700',
+                        fontSize: '.9rem',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {type}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={fieldStyle}>
+                <label style={labelStyle}>Section / Area Name</label>
+                <input
+                  style={inputStyle}
+                  placeholder="e.g. Building Pad A, Grid A–D"
+                  value={s.foundation_id}
+                  onChange={e => updateSection(i, 'foundation_id', e.target.value)}
+                  required
+                />
+              </div>
+
+              <div style={rowStyle}>
+                {s.section_type === 'Slab' && (
+                  <div style={{ flex: 1 }}>
+                    <label style={labelStyle}>Square Footage</label>
+                    <input
+                      style={inputStyle}
+                      placeholder="e.g. 2400"
+                      value={s.square_footage}
+                      onChange={e => updateSection(i, 'square_footage', e.target.value)}
+                    />
+                  </div>
+                )}
+                <div style={{ flex: 1 }}>
+                  <label style={labelStyle}>Thickness (in)</label>
+                  <input
+                    style={inputStyle}
+                    placeholder='e.g. 6"'
+                    value={s.total_depth}
+                    onChange={e => updateSection(i, 'total_depth', e.target.value)}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={labelStyle}>Est. Yards</label>
+                  <input
+                    style={inputStyle}
+                    placeholder="e.g. 45"
+                    value={s.estimated_yards}
+                    onChange={e => updateSection(i, 'estimated_yards', e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div style={fieldStyle}>
+                <label style={labelStyle}>Notes</label>
+                <textarea
+                  style={{ ...inputStyle, resize: 'vertical' }}
+                  rows={2}
+                  placeholder="Any notes about this section"
+                  value={s.notes}
+                  onChange={e => updateSection(i, 'notes', e.target.value)}
+                />
+              </div>
             </div>
-            <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Thickness (in)</label>
-              <input name="thickness" style={inputStyle} placeholder='e.g. 6"' />
-            </div>
-          </div>
-          <div style={rowStyle}>
-            <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Total Est. Yards</label>
-              <input name="total_yards" style={inputStyle} placeholder="e.g. 45" />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Finish Type</label>
-              <select name="finish_type" style={inputStyle}>
-                <option value="">Select...</option>
-                <option value="Broom">Broom</option>
-                <option value="Trowel">Trowel</option>
-                <option value="Exposed Aggregate">Exposed Aggregate</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-          </div>
-          <div style={fieldStyle}>
-            <label style={labelStyle}>General Notes</label>
-            <textarea name="general_notes" rows={3} style={{ ...inputStyle, resize: 'vertical' }}
-              placeholder="Any notes about the pour, issues, conditions..." />
-          </div>
+          ))}
+
+          <button type="button" onClick={addSection} style={addBtnStyle}>
+            + Add Section
+          </button>
         </div>
 
+        {/* CONCRETE TRUCKS */}
         <div style={sectionStyle}>
           <div style={sectionHeaderStyle}>Concrete Trucks</div>
 
@@ -215,19 +351,30 @@ export default function PourLogFlatwork() {
                 )}
               </div>
 
+              {/* Time fields with Now buttons */}
               <div style={rowStyle}>
-                <div style={{ flex: 1 }}>
-                  <label style={labelStyle}>Arrival Time</label>
-                  <input type="time" style={inputStyle} value={t.arrival_time} onChange={e => updateTruck(i, 'arrival_time', e.target.value)} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={labelStyle}>Pour Start</label>
-                  <input type="time" style={inputStyle} value={t.pour_start} onChange={e => updateTruck(i, 'pour_start', e.target.value)} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={labelStyle}>Pour Complete</label>
-                  <input type="time" style={inputStyle} value={t.pour_complete} onChange={e => updateTruck(i, 'pour_complete', e.target.value)} />
-                </div>
+                {[
+                  { label: 'Arrival Time', field: 'arrival_time' },
+                  { label: 'Pour Start', field: 'pour_start' },
+                  { label: 'Pour Complete', field: 'pour_complete' },
+                ].map(({ label, field }) => (
+                  <div key={field} style={{ flex: 1 }}>
+                    <label style={labelStyle}>{label}</label>
+                    <input
+                      type="time"
+                      style={inputStyle}
+                      value={t[field]}
+                      onChange={e => updateTruck(i, field, e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setNow(i, field)}
+                      style={nowBtnStyle}
+                    >
+                      Now
+                    </button>
+                  </div>
+                ))}
               </div>
 
               <div style={rowStyle}>
@@ -275,6 +422,7 @@ export default function PourLogFlatwork() {
           </button>
         </div>
 
+        {/* PHOTOS */}
         <div style={sectionStyle}>
           <div style={sectionHeaderStyle}>Photos</div>
           <div style={fieldStyle}>
@@ -360,7 +508,7 @@ const inputStyle = {
   width: '100%',
   padding: '.7rem',
   border: '1px solid #ddd',
-          borderRadius: '6px',
+  borderRadius: '6px',
   fontSize: '1rem',
   boxSizing: 'border-box',
   background: 'white'
@@ -385,5 +533,18 @@ const removeBtnStyle = {
   borderRadius: '4px',
   fontSize: '.8rem',
   color: '#999',
+  cursor: 'pointer'
+}
+
+const nowBtnStyle = {
+  marginTop: '.3rem',
+  width: '100%',
+  padding: '.4rem',
+  background: '#f0f0f0',
+  border: '1px solid #ddd',
+  borderRadius: '5px',
+  fontSize: '.78rem',
+  fontWeight: '700',
+  color: '#555',
   cursor: 'pointer'
 }

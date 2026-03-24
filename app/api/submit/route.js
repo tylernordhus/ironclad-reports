@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js'
-import { NextResponse } from 'next/server'
 import sharp from 'sharp'
 import { getUserId } from '@/lib/get-user-id'
 
@@ -61,7 +60,7 @@ export async function POST(request) {
       }
     }
 
-    const { error: dbError } = await supabase
+    const { data: inserted, error: dbError } = await supabase
       .from('reports')
       .insert({
         project_id,
@@ -80,14 +79,12 @@ export async function POST(request) {
         on_schedule,
         user_id
       })
+      .select()
+      .single()
 
     if (dbError) throw dbError
 
-    const redirectTo = project_id
-      ? `/projects/${project_id}`
-      : '/success'
-
-    return NextResponse.redirect(new URL(redirectTo, request.url), 303)
+    return Response.json({ id: inserted.id })
 
   } catch (err) {
     console.error(err)

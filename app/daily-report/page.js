@@ -203,8 +203,10 @@ function DailyReportInner() {
     }
 
     try {
-      await fetch('/api/submit', { method: 'POST', body: fd })
-      router.push(`/projects/${project_id}`)
+      const res = await fetch('/api/submit', { method: 'POST', body: fd })
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      router.push(`/reports/${data.id}`)
     } catch {
       alert('Something went wrong. Please try again.')
       setSubmitting(false)

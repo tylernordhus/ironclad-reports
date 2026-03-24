@@ -13,6 +13,13 @@ export default function PourLog() {
     if (!project_id) router.replace('/select-project?for=pour-log')
   }, [project_id, router])
 
+  const [logDate, setLogDate] = useState('')
+  const [weather, setWeather] = useState('')
+  const [ambientTemp, setAmbientTemp] = useState('')
+  const [weatherLoading, setWeatherLoading] = useState(false)
+  const [concreteSupplier, setConcreteSupplier] = useState('')
+  const [submittedBy, setSubmittedBy] = useState('')
+
   const [foundations, setFoundations] = useState([
     { foundation_id: '', total_depth: '', estimated_yards: '', notes: '' }
   ])
@@ -25,6 +32,7 @@ export default function PourLog() {
       pour_complete: '',
       yards: '',
       foundations_served: [],
+      shaft_depths: {},
       depth_reading: '',
       concrete_temp: '',
       slump: '',
@@ -37,6 +45,19 @@ export default function PourLog() {
 
   const [submitting, setSubmitting] = useState(false)
   const [photoFiles, setPhotoFiles] = useState([])
+
+  // Auto-fill weather when date is selected
+  useEffect(() => {
+    if (!project_id || !logDate) return
+    setWeatherLoading(true)
+    fetch(`/api/weather/${project_id}?date=${logDate}`)
+      .then(r => r.json())
+      .then(({ weather: w }) => {
+        if (w) setWeather(prev => prev || w)
+        setWeatherLoading(false)
+      })
+      .catch(() => setWeatherLoading(false))
+  }, [project_id, logDate])
 
   const addFoundation = () => {
     setFoundations([...foundations, { foundation_id: '', total_depth: '', estimated_yards: '', notes: '' }])
@@ -60,6 +81,7 @@ export default function PourLog() {
       pour_complete: '',
       yards: '',
       foundations_served: [],
+      shaft_depths: {},
       depth_reading: '',
       concrete_temp: '',
       slump: '',
@@ -76,13 +98,33 @@ export default function PourLog() {
     setTrucks(updated)
   }
 
+  const setNow = (truckIndex, field) => {
+    const now = new Date()
+    const hh = String(now.getHours()).padStart(2, '0')
+    const mm = String(now.getMinutes()).padStart(2, '0')
+    updateTruck(truckIndex, field, `${hh}:${mm}`)
+  }
+
   const toggleFoundationForTruck = (truckIndex, foundationId) => {
     const updated = [...trucks]
     const served = updated[truckIndex].foundations_served
     if (served.includes(foundationId)) {
       updated[truckIndex].foundations_served = served.filter(f => f !== foundationId)
+      const depths = { ...updated[truckIndex].shaft_depths }
+      delete depths[foundationId]
+      updated[truckIndex].shaft_depths = depths
     } else {
       updated[truckIndex].foundations_served = [...served, foundationId]
+      updated[truckIndex].shaft_depths = { ...updated[truckIndex].shaft_depths, [foundationId]: '' }
+    }
+    setTrucks(updated)
+  }
+
+  const setShaftDepth = (truckIndex, foundationId, depth) => {
+    const updated = [...trucks]
+    updated[truckIndex] = {
+      ...updated[truckIndex],
+      shaft_depths: { ...updated[truckIndex].shaft_depths, [foundationId]: depth }
     }
     setTrucks(updated)
   }
@@ -112,16 +154,19 @@ export default function PourLog() {
     const payload = {
       project_id,
       project_name: formData.get('project_name'),
-      log_date: formData.get('log_date'),
-      weather: formData.get('weather'),
-      ambient_temp: formData.get('ambient_temp'),
-      concrete_supplier: formData.get('concrete_supplier'),
-      submitted_by: formData.get('submitted_by'),
+      log_date: logDate,
+      weather,
+      ambient_temp: ambientTemp,
+      concrete_supplier: concreteSupplier,
+      submitted_by: submittedBy,
       photo_urls,
       foundations,
-      trucks: trucks.map(t => ({
+      trucks: trucks.map(({ shaft_depths, foundations_served, ...t }) => ({
         ...t,
-        foundations_served: t.foundations_served.join(', ')
+        foundations_served: foundations_served.map(id => {
+          const depth = shaft_depths?.[id]
+          return depth ? `${id} (${depth})` : id
+        }).join(', ')
       }))
     }
 
@@ -133,9 +178,7 @@ export default function PourLog() {
 
     if (res.ok) {
       const data = await res.json()
-      window.location.href = project_id
-        ? '/projects/' + project_id
-        : '/pour-logs'
+      router.push('/pour-logs/' + data.id)
     } else {
       alert('Something went wrong. Please try again.')
       setSubmitting(false)
@@ -163,7 +206,7 @@ export default function PourLog() {
 
       <form onSubmit={handleSubmit}>
 
-        {/* HEADER */}
+        {/* JOB INFO */}
         <div style={sectionStyle}>
           <div style={sectionHeaderStyle}>Job Info</div>
 
@@ -173,25 +216,54 @@ export default function PourLog() {
           </div>
           <div style={fieldStyle}>
             <label style={labelStyle}>Date</label>
-            <input name="log_date" type="date" required style={inputStyle} />
+            <input
+              type="date"
+              required
+              style={inputStyle}
+              value={logDate}
+              onChange={e => setLogDate(e.target.value)}
+            />
           </div>
           <div style={rowStyle}>
             <div style={{ flex: 1 }}>
-              <label style={labelStyle}>Weather</label>
-              <input name="weather" style={inputStyle} placeholder="e.g. Sunny" />
+              <label style={labelStyle}>
+                Weather {weatherLoading && <span style={{ fontWeight: '400', color: '#888' }}>— fetching…</span>}
+              </label>
+              <input
+                style={inputStyle}
+                placeholder="Auto-filled from date"
+                value={weather}
+                onChange={e => setWeather(e.target.value)}
+              />
             </div>
             <div style={{ flex: 1 }}>
               <label style={labelStyle}>Ambient Temp</label>
-              <input name="ambient_temp" style={inputStyle} placeholder="e.g. 88°F" />
+              <input
+                style={inputStyle}
+                placeholder="e.g. 88°F"
+                value={ambientTemp}
+                onChange={e => setAmbientTemp(e.target.value)}
+              />
             </div>
           </div>
           <div style={fieldStyle}>
             <label style={labelStyle}>Concrete Supplier</label>
-            <input name="concrete_supplier" style={inputStyle} placeholder="e.g. Central Concrete" />
+            <input
+              style={inputStyle}
+              placeholder="e.g. Central Concrete"
+              value={concreteSupplier}
+              onChange={e => setConcreteSupplier(e.target.value)}
+            />
           </div>
           <div style={fieldStyle}>
             <label style={labelStyle}>Submitted By</label>
-            <input name="submitted_by" required style={inputStyle} placeholder="Your name" />
+            <input
+              required
+              style={inputStyle}
+              placeholder="Your name"
+              value={submittedBy}
+              onChange={e => setSubmittedBy(e.target.value)}
+            />
           </div>
         </div>
 
@@ -224,7 +296,7 @@ export default function PourLog() {
                   <label style={labelStyle}>Total Depth</label>
                   <input
                     style={inputStyle}
-                    placeholder="e.g. 14'-6"
+                    placeholder="e.g. 14'-6&quot;"
                     value={f.total_depth}
                     onChange={e => updateFoundation(i, 'total_depth', e.target.value)}
                   />
@@ -244,7 +316,7 @@ export default function PourLog() {
                 <textarea
                   style={{ ...inputStyle, resize: 'vertical' }}
                   rows={2}
-                  placeholder="e.g. Poured to 2' from top with truck 1, completed with truck 2"
+                  placeholder="Any notes"
                   value={f.notes}
                   onChange={e => updateFoundation(i, 'notes', e.target.value)}
                 />
@@ -272,19 +344,30 @@ export default function PourLog() {
                 )}
               </div>
 
+              {/* Time fields with Now buttons */}
               <div style={rowStyle}>
-                <div style={{ flex: 1 }}>
-                  <label style={labelStyle}>Arrival Time</label>
-                  <input type="time" style={inputStyle} value={t.arrival_time} onChange={e => updateTruck(i, 'arrival_time', e.target.value)} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={labelStyle}>Pour Start</label>
-                  <input type="time" style={inputStyle} value={t.pour_start} onChange={e => updateTruck(i, 'pour_start', e.target.value)} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={labelStyle}>Pour Complete</label>
-                  <input type="time" style={inputStyle} value={t.pour_complete} onChange={e => updateTruck(i, 'pour_complete', e.target.value)} />
-                </div>
+                {[
+                  { label: 'Arrival Time', field: 'arrival_time' },
+                  { label: 'Pour Start', field: 'pour_start' },
+                  { label: 'Pour Complete', field: 'pour_complete' },
+                ].map(({ label, field }) => (
+                  <div key={field} style={{ flex: 1 }}>
+                    <label style={labelStyle}>{label}</label>
+                    <input
+                      type="time"
+                      style={inputStyle}
+                      value={t[field]}
+                      onChange={e => updateTruck(i, field, e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setNow(i, field)}
+                      style={nowBtnStyle}
+                    >
+                      Now
+                    </button>
+                  </div>
+                ))}
               </div>
 
               <div style={rowStyle}>
@@ -294,35 +377,59 @@ export default function PourLog() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={labelStyle}>Depth Reading</label>
-                  <input style={inputStyle} placeholder="e.g. 8'-3" value={t.depth_reading} onChange={e => updateTruck(i, 'depth_reading', e.target.value)} />
+                  <input style={inputStyle} placeholder="e.g. 8'-3&quot;" value={t.depth_reading} onChange={e => updateTruck(i, 'depth_reading', e.target.value)} />
                 </div>
               </div>
 
+              {/* Foundations served chips */}
               {foundations.some(f => f.foundation_id) && (
                 <div style={fieldStyle}>
                   <label style={labelStyle}>Foundations Served</label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.5rem', marginTop: '.3rem' }}>
-                    {foundations.filter(f => f.foundation_id).map((f, fi) => (
-                      <button
-                        key={fi}
-                        type="button"
-                        onClick={() => toggleFoundationForTruck(i, f.foundation_id)}
-                        style={{
-                          padding: '.5rem 1rem',
-                          borderRadius: '6px',
-                          border: '2px solid',
-                          borderColor: t.foundations_served.includes(f.foundation_id) ? '#cc3300' : '#ddd',
-                          background: t.foundations_served.includes(f.foundation_id) ? '#cc3300' : 'white',
-                          color: t.foundations_served.includes(f.foundation_id) ? 'white' : '#666',
-                          fontWeight: '600',
-                          fontSize: '.85rem',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {f.foundation_id}
-                      </button>
-                    ))}
+                    {foundations.filter(f => f.foundation_id).map((f, fi) => {
+                      const selected = t.foundations_served.includes(f.foundation_id)
+                      return (
+                        <button
+                          key={fi}
+                          type="button"
+                          onClick={() => toggleFoundationForTruck(i, f.foundation_id)}
+                          style={{
+                            padding: '.5rem 1rem',
+                            borderRadius: '6px',
+                            border: '2px solid',
+                            borderColor: selected ? '#cc3300' : '#ddd',
+                            background: selected ? '#cc3300' : 'white',
+                            color: selected ? 'white' : '#666',
+                            fontWeight: '600',
+                            fontSize: '.85rem',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {f.foundation_id}
+                        </button>
+                      )
+                    })}
                   </div>
+
+                  {/* Finish depth per selected shaft */}
+                  {t.foundations_served.length > 0 && (
+                    <div style={{ marginTop: '.75rem', padding: '.75rem', background: '#f0f4f8', borderRadius: '6px' }}>
+                      <div style={{ fontSize: '.8rem', fontWeight: '700', color: '#555', marginBottom: '.5rem', textTransform: 'uppercase', letterSpacing: '.04em' }}>
+                        Finish Depth (from top)
+                      </div>
+                      {t.foundations_served.map(foundId => (
+                        <div key={foundId} style={{ display: 'flex', alignItems: 'center', gap: '.6rem', marginBottom: '.4rem' }}>
+                          <span style={{ fontSize: '.85rem', fontWeight: '700', color: '#1a1a1a', minWidth: '90px' }}>{foundId}</span>
+                          <input
+                            style={{ ...inputStyle, flex: 1 }}
+                            placeholder="e.g. 2'-3&quot;"
+                            value={t.shaft_depths?.[foundId] || ''}
+                            onChange={e => setShaftDepth(i, foundId, e.target.value)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -479,5 +586,18 @@ const removeBtnStyle = {
   borderRadius: '4px',
   fontSize: '.8rem',
   color: '#999',
+  cursor: 'pointer'
+}
+
+const nowBtnStyle = {
+  marginTop: '.3rem',
+  width: '100%',
+  padding: '.4rem',
+  background: '#f0f0f0',
+  border: '1px solid #ddd',
+  borderRadius: '5px',
+  fontSize: '.78rem',
+  fontWeight: '700',
+  color: '#555',
   cursor: 'pointer'
 }
