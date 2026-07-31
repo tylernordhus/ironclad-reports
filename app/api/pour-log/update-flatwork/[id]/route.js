@@ -36,7 +36,13 @@ export async function POST(request, { params }) {
     if (logError) throw logError
 
     // Replace trucks
-    await supabase.from('pour_log_trucks').delete().eq('pour_log_id', params.id)
+    const { error: deleteTrucksError } = await supabase
+      .from('pour_log_trucks')
+      .delete()
+      .eq('pour_log_id', params.id)
+
+    if (deleteTrucksError) throw deleteTrucksError
+
     if (trucks && trucks.length > 0) {
       const { error: truckError } = await supabase.from('pour_log_trucks').insert(
         trucks.map(t => ({
@@ -76,6 +82,6 @@ export async function POST(request, { params }) {
     return Response.json({ success: true })
   } catch (err) {
     console.error(err)
-    return new Response('Something went wrong.', { status: 500 })
+    return Response.json({ error: err.message || 'Something went wrong.' }, { status: 500 })
   }
 }
