@@ -1,6 +1,14 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import sharp from 'sharp'
+import { recordAuditEvent } from '@/lib/audit-log'
+import {
+  buildDailyReportUpdate,
+  getDailyReportInputFromFormData,
+  normalizeDailyReportPayload,
+} from '@/lib/daily-reports'
+import { getUserId } from '@/lib/get-user-id'
+import { getAccessibleReportById } from '@/lib/report-access'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -49,22 +57,18 @@ async function uploadNewPhotos(files) {
 export async function POST(request, { params }) {
   try {
     const formData = await request.formData()
+    const userId = await getUserId()
+    if (!userId) {
+      return new Response('Unauthorized', { status: 401 })
+    }
 
-    const project_name = formData.get('project_name')
-    const report_date = formData.get('report_date')
-    const crew_count = parseInt(formData.get('crew_count'))
-    const work_completed = formData.get('work_completed')
-    const equipment_used = formData.get('equipment_used')
-    const safety_issues = formData.get('safety_issues')
-    const weather = formData.get('weather')
-    const submitted_by = formData.get('submitted_by')
+    const { report: existing } = await getAccessibleReportById(supabase, { reportId: params.id, userId })
+    if (!existing) {
+      return new Response('Report not found.', { status: 404 })
+    }
+
+    const payload = normalizeDailyReportPayload(getDailyReportInputFromFormData(formData), existing)
     const newPhotoFiles = formData.getAll('add_photos').filter(file => file && file.size > 0)
-
-    const { data: existing } = await supabase
-      .from('reports')
-      .select('photo_urls, photo_labels')
-      .eq('id', params.id)
-      .single()
 
     let photo_urls = existing?.photo_urls || []
     let photo_labels = existing?.photo_labels || []
@@ -76,21 +80,22 @@ export async function POST(request, { params }) {
 
     const { error } = await supabase
       .from('reports')
-      .update({
-        project_name,
-        report_date,
-        crew_count,
-        work_completed,
-        equipment_used,
-        safety_issues,
-        weather,
-        submitted_by,
-        photo_urls: photo_urls.length > 0 ? photo_urls : null,
-        photo_labels: photo_labels.length > 0 ? photo_labels : null,
-      })
+      .update(buildDailyReportUpdate(payload, { photoUrls: photo_urls, photoLabels: photo_labels }))
       .eq('id', params.id)
 
     if (error) throw error
+
+    await recordAuditEvent(supabase, {
+      organizationId: existing.organization_id,
+      actorUserId: userId,
+      entityType: 'report',
+      entityId: params.id,
+      action: 'update',
+      metadata: {
+        project_name: payload.project_name,
+        report_date: payload.report_date,
+      },
+    })
 
     return NextResponse.redirect(new URL(`/reports/${params.id}`, request.url), 303)
 

@@ -1,0 +1,40 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "development": {
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://ceunxfuhrshcltkvtosf.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_fh0_TxPu0RvWQmwZHvuufg_fcPvuZmh",
+        "EXPO_PUBLIC_API_BASE_URL": "https://app.ironcladks.com"
+      },
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://ceunxfuhrshcltkvtosf.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_fh0_TxPu0RvWQmwZHvuufg_fcPvuZmh",
+        "EXPO_PUBLIC_API_BASE_URL": "https://app.ironcladks.com"
+      },
+      "distribution": "internal"
+    },
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://ceunxfuhrshcltkvtosf.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_fh0_TxPu0RvWQmwZHvuufg_fcPvuZmh",
+        "EXPO_PUBLIC_API_BASE_URL": "https://app.ironcladks.com"
+      },
+      "autoIncrement": true
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "6763749762"
+      }
+    }
+  }
+}

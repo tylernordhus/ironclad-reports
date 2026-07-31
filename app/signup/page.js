@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase-browser'
 
 export default function SignupPage() {
@@ -10,6 +10,17 @@ export default function SignupPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
+  const [loginHref, setLoginHref] = useState('/login')
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const presetEmail = params.get('email')
+    if (presetEmail) {
+      setEmail(presetEmail)
+    }
+    setLoginHref(`/login${window.location.search || ''}`)
+  }, [])
 
   const handleSignup = async (e) => {
     e.preventDefault()
@@ -57,7 +68,7 @@ export default function SignupPage() {
           <p style={{ color: '#666', lineHeight: '1.6' }}>
             We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account, then come back to sign in.
           </p>
-          <a href="/login" style={{
+          <a href={loginHref} style={{
             display: 'inline-block',
             marginTop: '1.5rem',
             color: '#cc3300',
@@ -156,7 +167,7 @@ export default function SignupPage() {
 
         <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '.9rem', color: '#666' }}>
           Already have an account?{' '}
-          <a href="/login" style={{ color: '#cc3300', fontWeight: '600', textDecoration: 'none' }}>
+          <a href={loginHref} style={{ color: '#cc3300', fontWeight: '600', textDecoration: 'none' }}>
             Sign in
           </a>
         </p>

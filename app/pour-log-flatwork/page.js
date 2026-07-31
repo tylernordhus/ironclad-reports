@@ -1,13 +1,34 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import {
+  FormBackLink,
+  FormHero,
+  FormPage,
+  formCardStyle as cardStyle,
+  formDashedAddButtonStyle as addBtnStyle,
+  formFieldStyle as fieldStyle,
+  formInlineNowButtonStyle as nowInlineBtnStyle,
+  formInputStyle as inputStyle,
+  formLabelStyle as labelStyle,
+  formRemoveButtonStyle as removeBtnStyle,
+  formSectionStyle as sectionStyle,
+  formSectionHeaderStyle as sectionHeaderStyle,
+  formTimeControlStyle as timeControlStyle,
+  formTimeFieldStyle as timeFieldStyle,
+  formTimeGridStyle as timeGridStyle,
+  formTimeInputStyle as timeInputStyle,
+  formTimePanelHeaderStyle as timePanelHeaderStyle,
+  formTimePanelStyle as timePanelStyle,
+} from '@/app/components/FormUi'
 
 export default function PourLogFlatwork() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const project_name = searchParams.get('project_name') || ''
   const project_id = searchParams.get('project_id') || ''
+  const [projectName, setProjectName] = useState(project_name)
 
   useEffect(() => {
     if (!project_id) router.replace('/select-project?for=pour-log-flatwork')
@@ -26,7 +47,8 @@ export default function PourLogFlatwork() {
 
   const [trucks, setTrucks] = useState([
     {
-      truck_number: '1',
+      truck_number: '',
+      batch_time: '',
       arrival_time: '',
       pour_start: '',
       pour_complete: '',
@@ -42,6 +64,133 @@ export default function PourLogFlatwork() {
 
   const [submitting, setSubmitting] = useState(false)
   const [photoFiles, setPhotoFiles] = useState([])
+  const [draftReady, setDraftReady] = useState(false)
+  const [draftStatus, setDraftStatus] = useState('Saved')
+  const [activeTruckIndex, setActiveTruckIndex] = useState(null)
+  const draftKey = `pour-log-new-draft:${project_id || 'no-project'}:flatwork`
+  const skipNextDraftSave = useRef(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !project_id) {
+      setDraftReady(true)
+      return
+    }
+
+    const rawDraft = window.localStorage.getItem(draftKey)
+    if (!rawDraft) {
+      setDraftReady(true)
+      return
+    }
+
+    try {
+      const draft = JSON.parse(rawDraft)
+      if (draft.project_id && draft.project_id !== project_id) {
+        setDraftReady(true)
+        return
+      }
+
+      if (draft.project_name) setProjectName(draft.project_name)
+      if (draft.log_date) setLogDate(draft.log_date)
+      if (draft.weather) setWeather(draft.weather)
+      if (draft.ambient_temp) setAmbientTemp(draft.ambient_temp)
+      if (draft.concrete_supplier) setConcreteSupplier(draft.concrete_supplier)
+      if (draft.submitted_by) setSubmittedBy(draft.submitted_by)
+      if (Array.isArray(draft.sections) && draft.sections.length) setSections(draft.sections)
+      if (Array.isArray(draft.trucks) && draft.trucks.length) setTrucks(draft.trucks)
+      if (draft.activeTruckIndex == null) {
+        setActiveTruckIndex(null)
+      } else if (Number.isFinite(Number(draft.activeTruckIndex))) {
+        setActiveTruckIndex(Number(draft.activeTruckIndex))
+      }
+      setDraftStatus('Draft saved')
+      skipNextDraftSave.current = true
+    } catch {
+      window.localStorage.removeItem(draftKey)
+    } finally {
+      setDraftReady(true)
+    }
+  }, [draftKey, project_id])
+
+  const saveDraftNow = useCallback(() => {
+    if (typeof window === 'undefined' || !draftReady || !project_id || submitting) return false
+
+    try {
+      window.localStorage.setItem(draftKey, JSON.stringify({
+        project_id,
+        project_name: projectName,
+        log_date: logDate,
+        weather,
+        ambient_temp: ambientTemp,
+        concrete_supplier: concreteSupplier,
+        submitted_by: submittedBy,
+        sections,
+        trucks,
+        activeTruckIndex,
+        savedAt: Date.now(),
+      }))
+      setDraftStatus('Draft saved')
+      return true
+    } catch {
+      setDraftStatus('Unsaved changes')
+      return false
+    }
+  }, [activeTruckIndex, ambientTemp, concreteSupplier, draftKey, draftReady, logDate, projectName, project_id, sections, submittedBy, submitting, trucks, weather])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !draftReady || !project_id || submitting) return
+    if (skipNextDraftSave.current) {
+      skipNextDraftSave.current = false
+      return
+    }
+
+    setDraftStatus('Unsaved changes')
+    const timeoutId = window.setTimeout(() => {
+      setDraftStatus('Saving')
+      saveDraftNow()
+    }, 350)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [activeTruckIndex, ambientTemp, concreteSupplier, draftKey, draftReady, logDate, projectName, project_id, saveDraftNow, sections, submittedBy, submitting, trucks, weather])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const saveBeforeLeaving = () => {
+      saveDraftNow()
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') saveDraftNow()
+    }
+
+    window.addEventListener('pagehide', saveBeforeLeaving)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      window.removeEventListener('pagehide', saveBeforeLeaving)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [saveDraftNow])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const handleBeforeUnload = (event) => {
+      if (draftStatus !== 'Unsaved changes' && draftStatus !== 'Saving') return
+      saveDraftNow()
+      event.preventDefault()
+      event.returnValue = ''
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [draftStatus, saveDraftNow])
+
+  useEffect(() => {
+    setActiveTruckIndex(current => {
+      if (current == null || trucks.length === 0) return null
+      return Math.max(0, Math.min(current, trucks.length - 1))
+    })
+  }, [trucks.length])
 
   // Auto-fill weather when date is selected
   useEffect(() => {
@@ -72,7 +221,8 @@ export default function PourLogFlatwork() {
 
   const addTruck = () => {
     setTrucks([...trucks, {
-      truck_number: String(trucks.length + 1),
+      truck_number: '',
+      batch_time: '',
       arrival_time: '',
       pour_start: '',
       pour_complete: '',
@@ -84,6 +234,26 @@ export default function PourLogFlatwork() {
       cylinders_cast: '',
       notes: ''
     }])
+    setActiveTruckIndex(trucks.length)
+  }
+
+  const duplicateActiveTruck = () => {
+    const source = trucks[activeTruckIndex] || trucks[trucks.length - 1]
+    setTrucks([...trucks, {
+      truck_number: '',
+      batch_time: '',
+      arrival_time: '',
+      pour_start: '',
+      pour_complete: '',
+      yards: '',
+      concrete_temp: source?.concrete_temp || '',
+      slump: source?.slump || '',
+      air_content: source?.air_content || '',
+      water_added: source?.water_added || '',
+      cylinders_cast: source?.cylinders_cast || '',
+      notes: ''
+    }])
+    setActiveTruckIndex(trucks.length)
   }
 
   const updateTruck = (index, field, value) => {
@@ -101,6 +271,10 @@ export default function PourLogFlatwork() {
 
   const removeTruck = (index) => {
     setTrucks(trucks.filter((_, i) => i !== index))
+    setActiveTruckIndex(current => {
+      if (current == null || current === index) return null
+      return current > index ? current - 1 : current
+    })
   }
 
   const handleSubmit = async (e) => {
@@ -113,6 +287,7 @@ export default function PourLogFlatwork() {
     if (photoFiles.length > 0) {
       const fd = new FormData()
       fd.append('folder', 'pour-logs')
+      fd.append('project_id', project_id)
       photoFiles.forEach(f => fd.append('files', f))
       const uploadRes = await fetch('/api/upload-photos', { method: 'POST', body: fd })
       if (uploadRes.ok) {
@@ -123,7 +298,7 @@ export default function PourLogFlatwork() {
 
     const payload = {
       project_id,
-      project_name: formData.get('project_name'),
+      project_name: projectName,
       log_date: logDate,
       log_type: 'flatwork',
       weather,
@@ -143,6 +318,10 @@ export default function PourLogFlatwork() {
 
     if (res.ok) {
       const data = await res.json()
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem(draftKey)
+      }
+      setDraftStatus('Saved')
       router.push('/pour-logs/' + data.id)
     } else {
       alert('Something went wrong. Please try again.')
@@ -151,22 +330,20 @@ export default function PourLogFlatwork() {
   }
 
   return (
-    <main style={{ maxWidth: '680px', margin: '0 auto', padding: '1.5rem' }}>
-      <div style={{ marginBottom: '1.5rem' }}>
-        <a href={project_id ? '/pour-log-select?project_id=' + project_id + '&project_name=' + encodeURIComponent(project_name) : '/'} style={{ color: '#cc3300', textDecoration: 'none', fontSize: '.9rem' }}>
-          Back
-        </a>
-      </div>
+    <FormPage maxWidth="900px">
+      <FormBackLink href={project_id ? '/pour-log-select?project_id=' + project_id + '&project_name=' + encodeURIComponent(project_name) : '/'}>
+        Back
+      </FormBackLink>
 
-      <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-        <h1 style={{ color: '#1a1a1a', fontSize: '1.8rem', marginBottom: '.5rem' }}>
-          Flatwork Pour Log
-        </h1>
-        {project_name && (
-          <p style={{ color: '#cc3300', fontSize: '1rem', fontWeight: '600', margin: 0 }}>
-            {project_name}
-          </p>
-        )}
+      <FormHero
+        eyebrow="Pour Log"
+        title="Flatwork Pour Log"
+        subtitle={projectName || 'Track slabs, sections, truck times, and concrete test data.'}
+        accent="#cc3300"
+      />
+
+      <div style={draftStatusStyle}>
+        {draftStatus}
       </div>
 
       <form onSubmit={handleSubmit}>
@@ -177,7 +354,13 @@ export default function PourLogFlatwork() {
 
           <div style={fieldStyle}>
             <label style={labelStyle}>Project Name</label>
-            <input name="project_name" required style={inputStyle} defaultValue={project_name} />
+            <input
+              name="project_name"
+              required
+              style={inputStyle}
+              value={projectName}
+              onChange={e => setProjectName(e.target.value)}
+            />
           </div>
           <div style={fieldStyle}>
             <label style={labelStyle}>Date</label>
@@ -340,10 +523,42 @@ export default function PourLogFlatwork() {
         <div style={sectionStyle}>
           <div style={sectionHeaderStyle}>Concrete Trucks</div>
 
-          {trucks.map((t, i) => (
-            <div key={i} style={cardStyle}>
+          <div style={truckSwitcherStyle}>
+            {trucks.map((t, i) => {
+              const active = activeTruckIndex === i
+              return (
+                <button
+                  key={`truck-jump-${i}`}
+                  type="button"
+                  onClick={() => setActiveTruckIndex(current => current === i ? null : i)}
+                  style={{
+                    ...truckJumpButtonStyle,
+                    borderColor: active ? '#cc3300' : '#d6dde3',
+                    background: active ? '#fff4ef' : '#fff',
+                  }}
+                >
+                  <span style={truckJumpTitleStyle}>Truck {i + 1}</span>
+                  <span style={truckJumpMetaStyle}>
+                    {t.truck_number ? `ID ${t.truck_number}` : 'No truck ID'}
+                    {t.pour_complete ? ` · Done ${t.pour_complete}` : t.arrival_time ? ` · Arr ${t.arrival_time}` : ''}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+
+          {trucks.map((t, i) => {
+            if (activeTruckIndex !== i) return null
+
+            return (
+            <div key={i} style={{ ...cardStyle, borderColor: '#cc3300', background: '#fffdfb' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <div style={{ fontWeight: '700', color: '#1a1a1a', fontSize: '1.1rem' }}>Truck {t.truck_number}</div>
+                <div>
+                  <div style={{ fontWeight: '800', color: '#1a1a1a', fontSize: '1.15rem' }}>Truck {i + 1}</div>
+                  <div style={{ color: '#60717d', fontSize: '.84rem', marginTop: '.15rem' }}>
+                    {t.truck_number ? `Truck ID / Unit # ${t.truck_number}` : 'Truck ID / Unit # not entered'}
+                  </div>
+                </div>
                 {trucks.length > 1 && (
                   <button type="button" onClick={() => removeTruck(i)} style={removeBtnStyle}>
                     Remove
@@ -351,30 +566,64 @@ export default function PourLogFlatwork() {
                 )}
               </div>
 
-              {/* Time fields with Now buttons */}
-              <div style={rowStyle}>
-                {[
-                  { label: 'Arrival Time', field: 'arrival_time' },
-                  { label: 'Pour Start', field: 'pour_start' },
-                  { label: 'Pour Complete', field: 'pour_complete' },
-                ].map(({ label, field }) => (
-                  <div key={field} style={{ flex: 1 }}>
-                    <label style={labelStyle}>{label}</label>
+              <div style={timePanelStyle}>
+                <div style={timePanelHeaderStyle}>Truck Time Log</div>
+                <div style={rowStyle}>
+                  <div style={{ flex: 1 }}>
+                    <label style={labelStyle}>Truck ID / Unit #</label>
+                    <input
+                      style={inputStyle}
+                      placeholder="e.g. 8412"
+                      value={t.truck_number}
+                      onChange={e => updateTruck(i, 'truck_number', e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>Batch Time</label>
+                  <div style={timeControlStyle}>
                     <input
                       type="time"
-                      style={inputStyle}
-                      value={t[field]}
-                      onChange={e => updateTruck(i, field, e.target.value)}
+                      style={timeInputStyle}
+                      value={t.batch_time}
+                      onChange={e => updateTruck(i, 'batch_time', e.target.value)}
                     />
                     <button
                       type="button"
-                      onClick={() => setNow(i, field)}
-                      style={nowBtnStyle}
+                      onClick={() => setNow(i, 'batch_time')}
+                      style={nowInlineBtnStyle}
                     >
                       Now
                     </button>
                   </div>
-                ))}
+                </div>
+
+                <div style={timeGridStyle}>
+                  {[
+                    { label: 'Arrival Time', field: 'arrival_time' },
+                    { label: 'Pour Start', field: 'pour_start' },
+                    { label: 'Pour Complete', field: 'pour_complete' },
+                  ].map(({ label, field }) => (
+                    <div key={field} style={timeFieldStyle}>
+                      <label style={labelStyle}>{label}</label>
+                      <div style={timeControlStyle}>
+                        <input
+                          type="time"
+                          style={timeInputStyle}
+                          value={t[field]}
+                          onChange={e => updateTruck(i, field, e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setNow(i, field)}
+                          style={nowInlineBtnStyle}
+                        >
+                          Now
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div style={rowStyle}>
@@ -415,11 +664,17 @@ export default function PourLogFlatwork() {
                 <input style={inputStyle} placeholder="Any issues with this truck" value={t.notes} onChange={e => updateTruck(i, 'notes', e.target.value)} />
               </div>
             </div>
-          ))}
+            )
+          })}
 
-          <button type="button" onClick={addTruck} style={addBtnStyle}>
-            + Add Truck
-          </button>
+          <div style={truckActionsStyle}>
+            <button type="button" onClick={addTruck} style={{ ...addBtnStyle, flex: '1 1 180px' }}>
+              + Add Truck
+            </button>
+            <button type="button" onClick={duplicateActiveTruck} style={{ ...secondaryActionButtonStyle, flex: '1 1 180px' }}>
+              Duplicate Test Fields
+            </button>
+          </div>
         </div>
 
         {/* PHOTOS */}
@@ -459,92 +714,76 @@ export default function PourLogFlatwork() {
         </button>
 
       </form>
-    </main>
+    </FormPage>
   )
 }
 
-const sectionStyle = {
-  background: 'white',
-  borderRadius: '10px',
-  padding: '1.5rem',
-  marginBottom: '1.5rem',
-  boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
-}
-
-const sectionHeaderStyle = {
-  fontWeight: '800',
-  fontSize: '1.1rem',
-  color: '#1a1a1a',
-  marginBottom: '1.2rem',
-  paddingBottom: '.75rem',
-  borderBottom: '2px solid #f0f0f0'
-}
-
-const fieldStyle = { marginBottom: '1rem' }
-
 const rowStyle = {
-  display: 'flex',
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
   gap: '1rem',
-  marginBottom: '1rem'
+  marginBottom: '1rem',
+  alignItems: 'start'
 }
 
-const cardStyle = {
-  background: '#f9f9f9',
-  border: '1px solid #eee',
-  borderRadius: '8px',
-  padding: '1.2rem',
-  marginBottom: '1rem'
+const draftStatusStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  border: '1px solid #dfe6eb',
+  borderRadius: '999px',
+  padding: '.38rem .75rem',
+  margin: '-.25rem 0 1rem',
+  color: '#40515d',
+  background: '#fff',
+  fontSize: '.82rem',
+  fontWeight: '800',
 }
 
-const labelStyle = {
+const truckSwitcherStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+  gap: '.65rem',
+  marginBottom: '1rem',
+}
+
+const truckJumpButtonStyle = {
+  minHeight: '74px',
+  padding: '.7rem .8rem',
+  border: '2px solid #d6dde3',
+  borderRadius: '12px',
+  textAlign: 'left',
+  cursor: 'pointer',
+  boxShadow: '0 6px 14px rgba(22, 35, 45, 0.05)',
+}
+
+const truckJumpTitleStyle = {
   display: 'block',
-  fontWeight: '600',
-  marginBottom: '.3rem',
-  color: '#333',
-  fontSize: '.85rem'
+  color: '#172a3a',
+  fontWeight: '800',
+  fontSize: '.95rem',
+  marginBottom: '.2rem',
 }
 
-const inputStyle = {
-  width: '100%',
-  padding: '.7rem',
-  border: '1px solid #ddd',
-  borderRadius: '6px',
-  fontSize: '1rem',
-  boxSizing: 'border-box',
-  background: 'white'
-}
-
-const addBtnStyle = {
-  width: '100%',
-  padding: '.9rem',
-  background: '#f5f5f5',
-  border: '2px dashed #ddd',
-  borderRadius: '8px',
-  fontSize: '1rem',
-  fontWeight: '600',
-  color: '#666',
-  cursor: 'pointer'
-}
-
-const removeBtnStyle = {
-  padding: '.3rem .8rem',
-  background: 'white',
-  border: '1px solid #ddd',
-  borderRadius: '4px',
-  fontSize: '.8rem',
-  color: '#999',
-  cursor: 'pointer'
-}
-
-const nowBtnStyle = {
-  marginTop: '.3rem',
-  width: '100%',
-  padding: '.4rem',
-  background: '#f0f0f0',
-  border: '1px solid #ddd',
-  borderRadius: '5px',
-  fontSize: '.78rem',
+const truckJumpMetaStyle = {
+  display: 'block',
+  color: '#60717d',
   fontWeight: '700',
-  color: '#555',
-  cursor: 'pointer'
+  fontSize: '.78rem',
+  lineHeight: 1.35,
+}
+
+const truckActionsStyle = {
+  display: 'flex',
+  gap: '.75rem',
+  flexWrap: 'wrap',
+}
+
+const secondaryActionButtonStyle = {
+  border: '1px solid #d6dde3',
+  borderRadius: '12px',
+  background: '#fff',
+  color: '#2a3a45',
+  padding: '.85rem 1rem',
+  fontWeight: '800',
+  cursor: 'pointer',
 }

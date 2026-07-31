@@ -1,6 +1,13 @@
 import { createClient } from '@supabase/supabase-js'
 import sharp from 'sharp'
+import { recordAuditEvent } from '@/lib/audit-log'
+import {
+  buildDailyReportInsert,
+  getDailyReportInputFromFormData,
+  normalizeDailyReportPayload,
+} from '@/lib/daily-reports'
 import { getUserId } from '@/lib/get-user-id'
+import { getCreateProjectContext } from '@/lib/project-access'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -11,19 +18,19 @@ export async function POST(request) {
   try {
     const formData = await request.formData()
     const user_id = await getUserId()
+    if (!user_id) {
+      return new Response('Unauthorized', { status: 401 })
+    }
 
-    const project_id = formData.get('project_id') || null
-    const project_name = formData.get('project_name')
-    const report_date = formData.get('report_date')
-    const crew_count = parseInt(formData.get('crew_count'))
-    const work_completed = formData.get('work_completed')
-    const equipment_used = formData.get('equipment_used')
-    const safety_issues = formData.get('safety_issues')
-    const weather = formData.get('weather')
-    const submitted_by = formData.get('submitted_by')
-    const weather_delay = formData.get('weather_delay') === 'true'
-    const weather_delay_hours = formData.get('weather_delay_hours') ? parseFloat(formData.get('weather_delay_hours')) : null
-    const on_schedule = formData.get('on_schedule') !== 'false'
+    const payload = normalizeDailyReportPayload(getDailyReportInputFromFormData(formData))
+    const project_id = payload.project_id
+    const { project, organizationId: organization_id, error: projectError } = await getCreateProjectContext(supabase, {
+      userId: user_id,
+      projectId: project_id,
+    })
+    if (project_id && (projectError || !project)) {
+      return new Response('Project not found.', { status: 404 })
+    }
 
     const photoFiles = formData.getAll('photos').filter(f => f && f.size > 0)
     const photoLabelsRaw = formData.getAll('photo_labels')
@@ -62,27 +69,29 @@ export async function POST(request) {
 
     const { data: inserted, error: dbError } = await supabase
       .from('reports')
-      .insert({
-        project_id,
-        project_name,
-        report_date,
-        crew_count,
-        work_completed,
-        equipment_used,
-        safety_issues,
-        weather,
-        submitted_by,
-        photo_urls: photo_urls.length > 0 ? photo_urls : null,
-        photo_labels: photo_labels.length > 0 ? photo_labels : null,
-        weather_delay,
-        weather_delay_hours,
-        on_schedule,
-        user_id
-      })
+      .insert(buildDailyReportInsert(payload, {
+        userId: user_id,
+        organizationId: organization_id,
+        photoUrls: photo_urls,
+        photoLabels: photo_labels,
+      }))
       .select()
       .single()
 
     if (dbError) throw dbError
+
+    await recordAuditEvent(supabase, {
+      organizationId: organization_id,
+      actorUserId: user_id,
+      entityType: 'report',
+      entityId: inserted.id,
+      action: 'create',
+      metadata: {
+        project_id,
+        project_name: payload.project_name,
+        report_date: payload.report_date,
+      },
+    })
 
     return Response.json({ id: inserted.id })
 

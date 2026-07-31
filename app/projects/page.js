@@ -1,6 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 import { getUserId } from '@/lib/get-user-id'
+import {
+  applyAccessScope,
+  canManageOrganizationRole,
+  getAccessScope,
+} from '@/lib/organizations'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -11,12 +16,26 @@ export const revalidate = 0
 
 export default async function ProjectsPage() {
   const user_id = await getUserId()
+  const accessScope = await getAccessScope(supabase, user_id)
+  const canManageProjects = !accessScope.currentMembership || canManageOrganizationRole(accessScope.currentMembership)
 
-  const { data: projects, error } = await supabase
+  let projectsQuery = supabase
     .from('projects')
     .select('*')
-    .eq('user_id', user_id)
     .order('created_at', { ascending: false })
+
+  projectsQuery = applyAccessScope(
+    projectsQuery,
+    user_id,
+    accessScope.scopedOrganizationIds,
+    accessScope.scopedProjectIds,
+    {
+      projectIdColumn: 'id',
+      restrictToAssignedProjects: accessScope.restrictToAssignedProjects,
+    }
+  )
+
+  const { data: projects, error } = await projectsQuery
 
   if (error) {
     return <p style={{ padding: '2rem', color: 'red' }}>Error loading projects: {error.message}</p>
@@ -32,18 +51,34 @@ export default async function ProjectsPage() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1 style={{ fontSize: '1.8rem', color: '#1a1a1a' }}>Projects</h1>
-        <Link href="/projects/new" style={{
-          padding: '.6rem 1.2rem',
-          background: '#cc3300',
-          color: 'white',
-          borderRadius: '6px',
-          textDecoration: 'none',
-          fontWeight: '600',
+        {canManageProjects ? (
+          <Link href="/projects/new" style={{
+            padding: '.6rem 1.2rem',
+            background: '#cc3300',
+            color: 'white',
+            borderRadius: '6px',
+            textDecoration: 'none',
+            fontWeight: '600',
+            fontSize: '.9rem'
+          }}>
+            + New Project
+          </Link>
+        ) : null}
+      </div>
+
+      {!canManageProjects ? (
+        <div style={{
+          background: '#fff7f3',
+          border: '1px solid #f1d3c6',
+          color: '#8a3d1a',
+          borderRadius: '8px',
+          padding: '1rem 1.2rem',
+          marginBottom: '1.5rem',
           fontSize: '.9rem'
         }}>
-          + New Project
-        </Link>
-      </div>
+          Project setup and edits are owner-only. Ask an owner to manage projects or assignments from Settings.
+        </div>
+      ) : null}
 
       {projects.length === 0 && (
         <div style={{

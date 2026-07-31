@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "Inspector Gadget",
+    "slug": "ironclad-field",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "ironcladfield",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "buildNumber": "16",
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ironclad.field",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSFaceIDUsageDescription": "Use Face ID to unlock Inspector Gadget on this device.",
+        "NSCameraUsageDescription": "Use the camera to attach pour log photos in Inspector Gadget.",
+        "NSPhotoLibraryUsageDescription": "Use your photo library to attach pour log photos in Inspector Gadget."
+      }
+    },
+    "android": {
+      "versionCode": 1,
+      "package": "com.ironclad.field",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "38ac38b9-63b8-4b51-932e-e04f5be458c3"
+      }
+    }
+  }
+}

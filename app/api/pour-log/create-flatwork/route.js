@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
+import { recordAuditEvent } from '@/lib/audit-log'
 import { getUserId } from '@/lib/get-user-id'
+import { getCreateProjectContext } from '@/lib/project-access'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -9,6 +11,10 @@ const supabase = createClient(
 export async function POST(request) {
   try {
     const user_id = await getUserId()
+    if (!user_id) {
+      return new Response('Unauthorized', { status: 401 })
+    }
+
     const body = await request.json()
 
     const {
@@ -25,6 +31,14 @@ export async function POST(request) {
       trucks
     } = body
 
+    const { project, organizationId: organization_id, error: projectError } = await getCreateProjectContext(supabase, {
+      userId: user_id,
+      projectId: project_id,
+    })
+    if (project_id && (projectError || !project)) {
+      return new Response('Project not found.', { status: 404 })
+    }
+
     const { data: pourLog, error: logError } = await supabase
       .from('pour_logs')
       .insert({
@@ -37,7 +51,8 @@ export async function POST(request) {
         concrete_supplier,
         submitted_by,
         photo_urls: photo_urls && photo_urls.length > 0 ? photo_urls : null,
-        user_id
+        user_id,
+        organization_id
       })
       .select()
       .single()
@@ -68,6 +83,7 @@ export async function POST(request) {
           trucks.map(t => ({
             pour_log_id: pourLog.id,
             truck_number: t.truck_number,
+            batch_time: t.batch_time || null,
             arrival_time: t.arrival_time || null,
             pour_start: t.pour_start || null,
             pour_complete: t.pour_complete || null,
@@ -82,6 +98,20 @@ export async function POST(request) {
         )
       if (truckError) throw truckError
     }
+
+    await recordAuditEvent(supabase, {
+      organizationId: organization_id,
+      actorUserId: user_id,
+      entityType: 'pour_log',
+      entityId: pourLog.id,
+      action: 'create',
+      metadata: {
+        project_id,
+        project_name,
+        log_date,
+        log_type: 'flatwork',
+      },
+    })
 
     return Response.json({ id: pourLog.id })
 

@@ -1,18 +1,17 @@
 import { createClient } from '@supabase/supabase-js'
+import { NextResponse } from 'next/server'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
+import { recordAuditEvent } from '@/lib/audit-log'
+import { getUserId } from '@/lib/get-user-id'
+import { getAccessibleContractorEvaluationById } from '@/lib/contractor-eval-access'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SECRET_KEY
 )
-
-const COLORS = {
-  ink: rgb(0.12, 0.15, 0.19),
-  body: rgb(0.28, 0.33, 0.39),
-  muted: rgb(0.46, 0.5, 0.56),
-  line: rgb(0.87, 0.89, 0.92),
-  brand: rgb(0.16, 0.31, 0.45),
-}
 
 function formatDate(d) {
   if (!d) return '-'
@@ -27,11 +26,30 @@ function yn(val) {
 }
 
 export async function GET(request, { params }) {
-  const { data: eval_, error } = await supabase
-    .from('contractor_evaluations')
-    .select('*')
-    .eq('id', params.id)
-    .single()
+  if (request.nextUrl.searchParams.has('mobile_v')) {
+    const viewerUrl = new URL('/mobile/pdf', request.url)
+    viewerUrl.searchParams.set('src', `/api/contractor-eval/pdf/${params.id}`)
+    viewerUrl.searchParams.set('title', 'Contractor Evaluation PDF')
+    return NextResponse.redirect(viewerUrl)
+  }
+
+  const actorUserId = await getUserId()
+  if (!actorUserId) {
+    return new Response('Unauthorized', { status: 401 })
+  }
+
+  const COLORS = {
+    ink: rgb(0.12, 0.15, 0.19),
+    body: rgb(0.28, 0.33, 0.39),
+    muted: rgb(0.46, 0.5, 0.56),
+    line: rgb(0.87, 0.89, 0.92),
+    brand: rgb(0.16, 0.31, 0.45),
+  }
+
+  const { evaluation: eval_, error } = await getAccessibleContractorEvaluationById(supabase, {
+    evalId: params.id,
+    userId: actorUserId,
+  })
 
   if (error || !eval_) return new Response('Not found', { status: 404 })
 
@@ -129,6 +147,19 @@ export async function GET(request, { params }) {
   page.drawText(companyName, { x: 40, y: 16, size: 8, font, color: COLORS.muted })
 
   const pdfBytes = await pdfDoc.save()
+
+  await recordAuditEvent(supabase, {
+    organizationId: eval_.organization_id,
+    actorUserId,
+    entityType: 'contractor_evaluation',
+    entityId: eval_.id,
+    action: 'pdf_generated',
+    metadata: {
+      route: 'contractor_eval_pdf',
+      project_name: eval_.project_name,
+      inspection_date: eval_.inspection_date,
+    },
+  })
 
   return new Response(pdfBytes, {
     headers: {

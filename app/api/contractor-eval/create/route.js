@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+import { recordAuditEvent } from '@/lib/audit-log'
 import { getUserId } from '@/lib/get-user-id'
+import { getCreateProjectContext } from '@/lib/project-access'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -17,10 +19,22 @@ export async function POST(request) {
   try {
     const formData = await request.formData()
     const user_id = await getUserId()
+    if (!user_id) {
+      return new Response('Unauthorized', { status: 401 })
+    }
+
     const f = (name) => formData.get(name)
+    const project_id = f('project_id') || null
+    const { project, organizationId: organization_id, error: projectError } = await getCreateProjectContext(supabase, {
+      userId: user_id,
+      projectId: project_id,
+    })
+    if (project_id && (projectError || !project)) {
+      return new Response('Project not found.', { status: 404 })
+    }
 
     const { data: created, error } = await supabase.from('contractor_evaluations').insert({
-      project_id: f('project_id') || null,
+      project_id,
       inspector_name: f('inspector_name'),
       inspection_date: f('inspection_date') || null,
       inspection_location: f('inspection_location'),
@@ -52,9 +66,22 @@ export async function POST(request) {
       inspector_signature: f('inspector_signature'),
       signature_date: f('signature_date') || null,
       user_id,
+      organization_id,
     }).select().single()
 
     if (error) throw error
+
+    await recordAuditEvent(supabase, {
+      organizationId: organization_id,
+      actorUserId: user_id,
+      entityType: 'contractor_evaluation',
+      entityId: created.id,
+      action: 'create',
+      metadata: {
+        project_name: f('project_name'),
+        inspection_date: f('inspection_date') || null,
+      },
+    })
 
     return NextResponse.redirect(
       new URL(`/contractor-evals/${created.id}`, request.url),

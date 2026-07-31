@@ -1,4 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
+import { getUserId } from '@/lib/get-user-id'
+import { getAccessiblePourLogById, getPourLogChildren } from '@/lib/pour-log-access'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -6,26 +11,20 @@ const supabase = createClient(
 )
 
 export async function GET(request, { params }) {
-  const { data: log, error } = await supabase
-    .from('pour_logs')
-    .select('*')
-    .eq('id', params.id)
-    .single()
+  const userId = await getUserId()
+  if (!userId) {
+    return new Response('Unauthorized', { status: 401 })
+  }
 
+  const { log, error } = await getAccessiblePourLogById(supabase, { logId: params.id, userId })
   if (error || !log) {
     return new Response('Not found', { status: 404 })
   }
 
-  const { data: foundations } = await supabase
-    .from('pour_log_foundations')
-    .select('*')
-    .eq('pour_log_id', params.id)
+  const { foundations, trucks } = await getPourLogChildren(supabase, params.id)
 
-  const { data: trucks } = await supabase
-    .from('pour_log_trucks')
-    .select('*')
-    .eq('pour_log_id', params.id)
-    .order('truck_number', { ascending: true })
-
-  return Response.json({ log, foundations: foundations || [], trucks: trucks || [] })
+  return Response.json(
+    { log, foundations, trucks },
+    { headers: { 'Cache-Control': 'no-store, max-age=0' } }
+  )
 }

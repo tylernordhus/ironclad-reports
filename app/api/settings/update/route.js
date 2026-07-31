@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import sharp from 'sharp'
+import { getUserId } from '@/lib/get-user-id'
+import { canManageOrganizationRole, getPrimaryOrganizationMembership } from '@/lib/organizations'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -9,6 +11,16 @@ const supabase = createClient(
 
 export async function POST(request) {
   try {
+    const userId = await getUserId()
+    if (!userId) {
+      return new Response('Authentication required.', { status: 401 })
+    }
+
+    const membership = await getPrimaryOrganizationMembership(supabase, userId)
+    if (!canManageOrganizationRole(membership)) {
+      return new Response('Forbidden.', { status: 403 })
+    }
+
     const formData = await request.formData()
 
     const company_name = formData.get('company_name')

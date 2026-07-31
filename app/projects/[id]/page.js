@@ -2,6 +2,20 @@ import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 import { getUserId } from '@/lib/get-user-id'
 import DeleteButton from '@/app/components/DeleteButton'
+import {
+  applyAccessScope,
+  canManageOrganizationRole,
+  getAccessScope,
+  getOrganizationMembershipByOrgAndUser,
+  getOwnedProjectById,
+} from '@/lib/organizations'
+import { getQaFormSummary } from '@/lib/qa-forms'
+import { getQaFormsAvailability, getQaFormsUnavailableMessage } from '@/lib/supabase-errors'
+import {
+  getProjectReportTypeForQaForm,
+  getProjectReportTypeSettings,
+  isProjectReportTypeEnabled,
+} from '@/lib/project-report-types'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -12,38 +26,83 @@ export const revalidate = 0
 
 export default async function ProjectDetail({ params }) {
   const user_id = await getUserId()
+  const accessScope = await getAccessScope(supabase, user_id)
 
-  const { data: project, error } = await supabase
-    .from('projects')
-    .select('*')
-    .eq('id', params.id)
-    .eq('user_id', user_id)
-    .single()
+  const { data: project, error } = await getOwnedProjectById(
+    supabase,
+    user_id,
+    params.id,
+    accessScope.scopedOrganizationIds,
+    '*',
+    accessScope.scopedProjectIds,
+    { restrictToAssignedProjects: accessScope.restrictToAssignedProjects }
+  )
 
   if (error || !project) {
     return <p style={{ padding: '2rem', color: 'red' }}>Project not found.</p>
   }
 
-  const { data: reports } = await supabase
+  const projectMembership = await getOrganizationMembershipByOrgAndUser(
+    supabase,
+    project.organization_id,
+    user_id
+  )
+  const canManageProjectAdmin = canManageOrganizationRole(projectMembership)
+
+  const reportTypeSettings = await getProjectReportTypeSettings(supabase, project.id)
+
+  let reportsQuery = supabase
     .from('reports')
     .select('*')
     .eq('project_id', project.id)
-    .eq('user_id', user_id)
     .order('report_date', { ascending: false })
+  reportsQuery = applyAccessScope(reportsQuery, user_id, accessScope.scopedOrganizationIds, accessScope.scopedProjectIds, {
+    restrictToAssignedProjects: accessScope.restrictToAssignedProjects,
+  })
+  const { data: reports } = await reportsQuery
 
-  const { data: pourLogs } = await supabase
+  let pourLogsQuery = supabase
     .from('pour_logs')
     .select('*')
     .eq('project_id', project.id)
-    .eq('user_id', user_id)
     .order('log_date', { ascending: false })
+  pourLogsQuery = applyAccessScope(pourLogsQuery, user_id, accessScope.scopedOrganizationIds, accessScope.scopedProjectIds, {
+    restrictToAssignedProjects: accessScope.restrictToAssignedProjects,
+  })
+  const { data: pourLogs } = await pourLogsQuery
 
-  const { data: contractorEvals } = await supabase
+  let contractorEvalsQuery = supabase
     .from('contractor_evaluations')
     .select('*')
     .eq('project_id', project.id)
-    .eq('user_id', user_id)
     .order('inspection_date', { ascending: false })
+  contractorEvalsQuery = applyAccessScope(contractorEvalsQuery, user_id, accessScope.scopedOrganizationIds, accessScope.scopedProjectIds, {
+    restrictToAssignedProjects: accessScope.restrictToAssignedProjects,
+  })
+  const { data: contractorEvals } = await contractorEvalsQuery
+
+  let qaFormsQuery = supabase
+    .from('qa_forms')
+    .select('*')
+    .eq('project_id', project.id)
+    .order('work_date', { ascending: false })
+  qaFormsQuery = applyAccessScope(qaFormsQuery, user_id, accessScope.scopedOrganizationIds, accessScope.scopedProjectIds, {
+    restrictToAssignedProjects: accessScope.restrictToAssignedProjects,
+  })
+  const { data: qaForms, error: qaFormsError } = await qaFormsQuery
+
+  const qaFormsAvailability = getQaFormsAvailability(qaFormsError)
+  const safeQaForms = qaFormsAvailability.available
+    ? (qaForms || []).filter(form =>
+        isProjectReportTypeEnabled(reportTypeSettings, getProjectReportTypeForQaForm(form.form_type))
+      )
+    : []
+  const qaFormsUnavailableMessage = getQaFormsUnavailableMessage(qaFormsAvailability.reason)
+  const showDailyReports = isProjectReportTypeEnabled(reportTypeSettings, 'daily_report')
+  const showPourLogs = isProjectReportTypeEnabled(reportTypeSettings, 'pour_log')
+  const showContractorEvaluations = isProjectReportTypeEnabled(reportTypeSettings, 'contractor_evaluation')
+  const showQaForms = ['qa_009', 'qa_010', 'qa_011', 'qa_013']
+    .some(type => isProjectReportTypeEnabled(reportTypeSettings, type))
 
   return (
     <main style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem' }}>
@@ -111,7 +170,7 @@ export default async function ProjectDetail({ params }) {
       </div>
 
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
-        <Link href={'/daily-report?project_id=' + project.id + '&project_name=' + encodeURIComponent(project.project_name)} style={{
+        {showDailyReports ? <Link href={'/daily-report?project_id=' + project.id + '&project_name=' + encodeURIComponent(project.project_name)} style={{
           flex: 1,
           minWidth: '140px',
           padding: '.8rem 1rem',
@@ -124,8 +183,23 @@ export default async function ProjectDetail({ params }) {
           textAlign: 'center'
         }}>
           + Daily Report
-        </Link>
-        <Link href={'/pour-log-select?project_id=' + project.id + '&project_name=' + encodeURIComponent(project.project_name)} style={{
+        </Link> : null}
+        {showDailyReports ? <Link href={'/daily-report?project_id=' + project.id + '&project_name=' + encodeURIComponent(project.project_name) + '&mode=quick'} style={{
+          flex: 1,
+          minWidth: '140px',
+          padding: '.8rem 1rem',
+          background: '#fff4ef',
+          color: '#cc3300',
+          border: '1px solid #f1c8ba',
+          borderRadius: '6px',
+          textDecoration: 'none',
+          fontWeight: '700',
+          fontSize: '.9rem',
+          textAlign: 'center'
+        }}>
+          Quick Submit
+        </Link> : null}
+        {showPourLogs ? <Link href={'/pour-log-select?project_id=' + project.id + '&project_name=' + encodeURIComponent(project.project_name)} style={{
           flex: 1,
           minWidth: '140px',
           padding: '.8rem 1rem',
@@ -138,8 +212,8 @@ export default async function ProjectDetail({ params }) {
           textAlign: 'center'
         }}>
           + Pour Log
-        </Link>
-        <Link href={'/contractor-eval?project_id=' + project.id + '&project_name=' + encodeURIComponent(project.project_name)} style={{
+        </Link> : null}
+        {showContractorEvaluations ? <Link href={'/contractor-eval?project_id=' + project.id + '&project_name=' + encodeURIComponent(project.project_name)} style={{
           flex: 1,
           minWidth: '140px',
           padding: '.8rem 1rem',
@@ -152,7 +226,21 @@ export default async function ProjectDetail({ params }) {
           textAlign: 'center'
         }}>
           + Contractor Eval
-        </Link>
+        </Link> : null}
+        {showQaForms ? <Link href={'/qa-form-select?project_id=' + project.id + '&project_name=' + encodeURIComponent(project.project_name)} style={{
+          flex: 1,
+          minWidth: '140px',
+          padding: '.8rem 1rem',
+          background: '#24506d',
+          color: 'white',
+          borderRadius: '6px',
+          textDecoration: 'none',
+          fontWeight: '600',
+          fontSize: '.9rem',
+          textAlign: 'center'
+        }}>
+          + QA Form
+        </Link> : null}
         <Link href={'/projects/' + project.id + '/weekly-summary'} style={{
           flex: 1,
           minWidth: '140px',
@@ -167,43 +255,62 @@ export default async function ProjectDetail({ params }) {
         }}>
           Weekly Summary
         </Link>
-        <Link href={'/projects/' + project.id + '/edit'} style={{
+        <Link href={'/projects/' + project.id + '/photos'} style={{
           flex: 1,
           minWidth: '140px',
           padding: '.8rem 1rem',
-          background: 'white',
-          color: '#1a1a1a',
-          border: '2px solid #e5e5e5',
+          background: '#f4f7fb',
+          color: '#24506d',
+          border: '1px solid #ccd8e2',
           borderRadius: '6px',
           textDecoration: 'none',
-          fontWeight: '600',
+          fontWeight: '700',
           fontSize: '.9rem',
           textAlign: 'center'
         }}>
-          Edit Project
+          Project Photos
         </Link>
-        <DeleteButton
-          action={`/api/delete/project/${project.id}`}
-          label="Delete Project"
-          redirectTo="/projects"
-          style={{
+        {canManageProjectAdmin ? (
+          <Link href={'/projects/' + project.id + '/edit'} style={{
             flex: 1,
             minWidth: '140px',
             padding: '.8rem 1rem',
             background: 'white',
-            color: '#cc3300',
-            border: '2px solid #cc3300',
+            color: '#1a1a1a',
+            border: '2px solid #e5e5e5',
             borderRadius: '6px',
+            textDecoration: 'none',
             fontWeight: '600',
             fontSize: '.9rem',
             textAlign: 'center'
-          }}
-        />
+          }}>
+            Edit Project
+          </Link>
+        ) : null}
+        {canManageProjectAdmin ? (
+          <DeleteButton
+            action={`/api/delete/project/${project.id}`}
+            label="Delete Project"
+            redirectTo="/projects"
+            style={{
+              flex: 1,
+              minWidth: '140px',
+              padding: '.8rem 1rem',
+              background: 'white',
+              color: '#cc3300',
+              border: '2px solid #cc3300',
+              borderRadius: '6px',
+              fontWeight: '600',
+              fontSize: '.9rem',
+              textAlign: 'center'
+            }}
+          />
+        ) : null}
       </div>
 
-      <h2 style={{ fontSize: '1.2rem', color: '#1a1a1a', marginBottom: '1rem' }}>Daily Reports</h2>
+      {showDailyReports ? <h2 style={{ fontSize: '1.2rem', color: '#1a1a1a', marginBottom: '1rem' }}>Daily Reports</h2> : null}
 
-      {(!reports || reports.length === 0) && (
+      {showDailyReports && (!reports || reports.length === 0) && (
         <div style={{
           background: 'white',
           borderRadius: '8px',
@@ -216,7 +323,7 @@ export default async function ProjectDetail({ params }) {
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+      {showDailyReports ? <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
         {reports && reports.map((report) => (
           <Link key={report.id} href={'/reports/' + report.id} style={{ textDecoration: 'none' }}>
             <div style={{
@@ -240,11 +347,11 @@ export default async function ProjectDetail({ params }) {
             </div>
           </Link>
         ))}
-      </div>
+      </div> : null}
 
-      <h2 style={{ fontSize: '1.2rem', color: '#1a1a1a', marginBottom: '1rem' }}>Pour Logs</h2>
+      {showPourLogs ? <h2 style={{ fontSize: '1.2rem', color: '#1a1a1a', marginBottom: '1rem' }}>Pour Logs</h2> : null}
 
-      {(!pourLogs || pourLogs.length === 0) && (
+      {showPourLogs && (!pourLogs || pourLogs.length === 0) && (
         <div style={{
           background: 'white',
           borderRadius: '8px',
@@ -257,7 +364,7 @@ export default async function ProjectDetail({ params }) {
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+      {showPourLogs ? <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
         {pourLogs && pourLogs.map((log) => (
           <Link key={log.id} href={'/pour-logs/' + log.id} style={{ textDecoration: 'none' }}>
             <div style={{
@@ -281,11 +388,11 @@ export default async function ProjectDetail({ params }) {
             </div>
           </Link>
         ))}
-      </div>
+      </div> : null}
 
-      <h2 style={{ fontSize: '1.2rem', color: '#1a1a1a', marginBottom: '1rem' }}>Contractor Evaluations</h2>
+      {showContractorEvaluations ? <h2 style={{ fontSize: '1.2rem', color: '#1a1a1a', marginBottom: '1rem' }}>Contractor Evaluations</h2> : null}
 
-      {(!contractorEvals || contractorEvals.length === 0) && (
+      {showContractorEvaluations && (!contractorEvals || contractorEvals.length === 0) && (
         <div style={{
           background: 'white',
           borderRadius: '8px',
@@ -298,7 +405,7 @@ export default async function ProjectDetail({ params }) {
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+      {showContractorEvaluations ? <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
         {contractorEvals && contractorEvals.map((ev) => (
           <Link key={ev.id} href={'/contractor-evals/' + ev.id} style={{ textDecoration: 'none' }}>
             <div style={{
@@ -322,7 +429,64 @@ export default async function ProjectDetail({ params }) {
             </div>
           </Link>
         ))}
-      </div>
+      </div> : null}
+
+      {showQaForms ? <h2 style={{ fontSize: '1.2rem', color: '#1a1a1a', marginBottom: '1rem' }}>QA Forms</h2> : null}
+
+      {showQaForms && !qaFormsAvailability.available && qaFormsUnavailableMessage && (
+        <div style={{
+          background: '#fff7e8',
+          border: '1px solid #f2d08a',
+          borderRadius: '8px',
+          padding: '1rem 1.25rem',
+          color: '#7a5a12',
+          marginBottom: '1rem'
+        }}>
+          {qaFormsUnavailableMessage}
+        </div>
+      )}
+
+      {showQaForms && qaFormsAvailability.available && safeQaForms.length === 0 && (
+        <div style={{
+          background: 'white',
+          borderRadius: '8px',
+          padding: '2rem',
+          textAlign: 'center',
+          color: '#666',
+          marginBottom: '1rem'
+        }}>
+          No QA forms yet for this project.
+        </div>
+      )}
+
+      {showQaForms ? <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+        {safeQaForms.map((form) => {
+          const summary = getQaFormSummary(form)
+          return (
+            <Link key={form.id} href={'/qa-forms/' + form.id} style={{ textDecoration: 'none' }}>
+              <div style={{
+                background: 'white',
+                border: '1px solid #e5e5e5',
+                borderRadius: '8px',
+                padding: '1.2rem 1.5rem',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <div>
+                  <div style={{ fontWeight: '700', color: '#1a1a1a', fontSize: '1rem', marginBottom: '.25rem' }}>
+                    {form.work_date || '-'}
+                  </div>
+                  <div style={{ color: '#666', fontSize: '.85rem' }}>
+                    {summary.code} · {summary.shortLabel} · {form.submitted_by || '-'}
+                  </div>
+                </div>
+                <div style={{ color: '#24506d', fontSize: '1.2rem' }}>→</div>
+              </div>
+            </Link>
+          )
+        })}
+      </div> : null}
     </main>
   )
 }

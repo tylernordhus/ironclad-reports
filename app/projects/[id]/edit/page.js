@@ -1,5 +1,15 @@
 import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
+import ProjectReportTypeFields from '@/app/components/ProjectReportTypeFields'
+import { getProjectReportTypeSettings } from '@/lib/project-report-types'
+import { getUserId } from '@/lib/get-user-id'
+import {
+  canManageOrganizationRole,
+  getAccessScope,
+  getOrganizationMembershipByOrgAndUser,
+  getOwnedProjectById,
+} from '@/lib/organizations'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -9,15 +19,33 @@ const supabase = createClient(
 export const revalidate = 0
 
 export default async function EditProject({ params }) {
-  const { data: project, error } = await supabase
-    .from('projects')
-    .select('*')
-    .eq('id', params.id)
-    .single()
+  const userId = await getUserId()
+  const accessScope = await getAccessScope(supabase, userId)
+  const { data: project, error } = await getOwnedProjectById(
+    supabase,
+    userId,
+    params.id,
+    accessScope.scopedOrganizationIds,
+    '*',
+    accessScope.scopedProjectIds,
+    { restrictToAssignedProjects: accessScope.restrictToAssignedProjects }
+  )
 
   if (error || !project) {
     return <p style={{ padding: '2rem', color: 'red' }}>Project not found.</p>
   }
+
+  const projectMembership = await getOrganizationMembershipByOrgAndUser(
+    supabase,
+    project.organization_id,
+    userId
+  )
+
+  if (!canManageOrganizationRole(projectMembership)) {
+    redirect(`/projects/${project.id}`)
+  }
+
+  const reportTypeSettings = await getProjectReportTypeSettings(supabase, project.id)
 
   return (
     <main style={{
@@ -71,15 +99,15 @@ export default async function EditProject({ params }) {
           </div>
           <div style={{ marginBottom: '1.2rem' }}>
             <label style={{ display: 'block', fontWeight: '600', marginBottom: '.4rem', color: '#333' }}>
-              Owner / Client Name
+              Owner / Client Name <span style={{ fontWeight: '400', color: '#999' }}>(optional)</span>
             </label>
-            <input name="client_name" required style={inputStyle} defaultValue={project.client_name} />
+            <input name="client_name" style={inputStyle} defaultValue={project.client_name || ''} />
           </div>
           <div style={{ marginBottom: '1.2rem' }}>
             <label style={{ display: 'block', fontWeight: '600', marginBottom: '.4rem', color: '#333' }}>
-              Owner / Client Email
+              Owner / Client Email <span style={{ fontWeight: '400', color: '#999' }}>(optional)</span>
             </label>
-            <input name="client_email" type="email" required style={inputStyle} defaultValue={project.client_email} />
+            <input name="client_email" type="email" style={inputStyle} defaultValue={project.client_email || ''} />
           </div>
           <div style={{ marginBottom: '1.2rem' }}>
             <label style={{ display: 'block', fontWeight: '600', marginBottom: '.4rem', color: '#333' }}>
@@ -104,6 +132,7 @@ export default async function EditProject({ params }) {
               <option value="on hold">On Hold</option>
             </select>
           </div>
+          <ProjectReportTypeFields settings={reportTypeSettings} />
           <button type="submit" style={{
             width: '100%',
             padding: '1rem',

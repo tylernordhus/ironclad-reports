@@ -1,6 +1,26 @@
+import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
+import ProjectReportTypeFields from '@/app/components/ProjectReportTypeFields'
+import { getUserId } from '@/lib/get-user-id'
+import {
+  canManageOrganizationRole,
+  getPrimaryOrganizationMembership,
+} from '@/lib/organizations'
 
-export default function NewProject() {
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SECRET_KEY
+)
+
+export default async function NewProject() {
+  const userId = await getUserId()
+  const currentMembership = await getPrimaryOrganizationMembership(supabase, userId)
+
+  if (currentMembership && !canManageOrganizationRole(currentMembership)) {
+    redirect('/projects')
+  }
+
   return (
     <main style={{
       minHeight: '100vh',
@@ -86,6 +106,8 @@ export default function NewProject() {
               <option value="on hold">On Hold</option>
             </select>
           </div>
+
+          <ProjectReportTypeFields />
 
           <button type="submit" style={{
             width: '100%',

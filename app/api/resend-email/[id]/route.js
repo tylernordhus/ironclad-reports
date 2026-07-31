@@ -1,13 +1,13 @@
 import { createClient } from '@supabase/supabase-js'
-import { Resend } from 'resend'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
+import { recordAuditEvent } from '@/lib/audit-log'
+import { getUserId } from '@/lib/get-user-id'
+import { getAccessibleReportById } from '@/lib/report-access'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SECRET_KEY
 )
-
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 function formatDate(dateStr) {
   if (!dateStr) return '-'
@@ -15,13 +15,29 @@ function formatDate(dateStr) {
   return month + '-' + day + '-' + year
 }
 
-export async function GET(request, { params }) {
-  const { data: report, error } = await supabase
-    .from('reports')
-    .select('*')
-    .eq('id', params.id)
-    .single()
+async function sendEmailWithResend(payload) {
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  })
 
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(errorText || 'Failed to send email.')
+  }
+}
+
+export async function GET(request, { params }) {
+  const actorUserId = await getUserId()
+  if (!actorUserId) {
+    return new Response('Unauthorized', { status: 401 })
+  }
+
+  const { report, error } = await getAccessibleReportById(supabase, { reportId: params.id, userId: actorUserId })
   if (error || !report) {
     return new Response('Report not found', { status: 404 })
   }
@@ -99,7 +115,7 @@ export async function GET(request, { params }) {
   const pdfBytes = await pdfDoc.save()
   const pdfBuffer = Buffer.from(pdfBytes)
 
-  await resend.emails.send({
+  await sendEmailWithResend({
     from: 'Field Reports <onboarding@resend.dev>',
     to: toEmail,
     subject: 'Daily Report - ' + report.project_name + ' - ' + formatDate(report.report_date),
@@ -117,8 +133,23 @@ export async function GET(request, { params }) {
     `,
     attachments: [{
       filename: 'daily-report-' + report.project_name + '-' + report.report_date + '.pdf',
-      content: pdfBuffer
+      content: pdfBuffer.toString('base64'),
+      content_type: 'application/pdf'
     }]
+  })
+
+  await recordAuditEvent(supabase, {
+    organizationId: report.organization_id,
+    actorUserId,
+    entityType: 'report',
+    entityId: report.id,
+    action: 'email_sent',
+    metadata: {
+      route: 'daily_report_email',
+      project_id: report.project_id,
+      to_email: toEmail,
+      report_date: report.report_date,
+    },
   })
 
   return Response.redirect(new URL('/reports/' + report.id + '?sent=true', request.url))

@@ -4,6 +4,17 @@ export const dynamic = 'force-dynamic'
 
 import { Suspense, useState, useEffect, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import {
+  FormBackLink,
+  FormHero,
+  FormPage,
+  formFieldStyle as fieldStyle,
+  formInputStyle as inputStyle,
+  formLabelStyle as labelStyle,
+  formSectionStyle,
+  formSubmitButtonStyle,
+  formTextAreaStyle,
+} from '@/app/components/FormUi'
 
 export default function DailyReport() {
   return (
@@ -18,14 +29,16 @@ function DailyReportInner() {
   const router = useRouter()
   const project_id = searchParams.get('project_id') || ''
   const project_name_param = searchParams.get('project_name') || ''
+  const quickMode = searchParams.get('mode') === 'quick'
 
+  const today = new Date().toISOString().split('T')[0]
   const [fields, setFields] = useState({
     project_name: project_name_param,
-    report_date: '',
+    report_date: today,
     crew_count: '',
     work_completed: '',
     equipment_used: '',
-    safety_issues: '',
+    safety_issues: quickMode ? 'None reported.' : '',
     weather: '',
     submitted_by: '',
     weather_delay: false,
@@ -34,12 +47,16 @@ function DailyReportInner() {
   })
   const [copyState, setCopyState] = useState('idle') // idle | loading | copied | none
   const [weatherLoading, setWeatherLoading] = useState(false)
+  const [weatherSource, setWeatherSource] = useState('')
+  const [prefillLoading, setPrefillLoading] = useState(false)
+  const [prefillNote, setPrefillNote] = useState('')
   const [polishState, setPolishState] = useState('idle') // idle | loading | done
   const [equipmentList, setEquipmentList] = useState([])
   const [newEquipment, setNewEquipment] = useState('')
   const [addingEquipment, setAddingEquipment] = useState(false)
   const [photoEntries, setPhotoEntries] = useState([{ id: 1, label: '' }])
   const [submitting, setSubmitting] = useState(false)
+  const [showOptionalFields, setShowOptionalFields] = useState(!quickMode)
   const fileRefs = useRef({})
   const nextPhotoId = useRef(2)
 
@@ -47,35 +64,90 @@ function DailyReportInner() {
     if (!project_id) router.replace('/select-project?for=daily-report')
   }, [project_id, router])
 
-  // Auto-fill crew, equipment, submitted_by from last report on load
-  useEffect(() => {
-    if (!project_id) return
-    fetch(`/api/reports/latest/${project_id}`)
-      .then(r => r.json())
-      .then(({ report }) => {
-        if (!report) return
-        setFields(f => ({
-          ...f,
-          crew_count: f.crew_count || String(report.crew_count ?? ''),
-          equipment_used: f.equipment_used || report.equipment_used || '',
-          submitted_by: f.submitted_by || report.submitted_by || '',
-        }))
-      })
-      .catch(() => {})
-  }, [project_id])
+  async function fetchSmartPrefill() {
+    if (!project_id || !fields.report_date) return
 
-  // Auto-fill weather from project location
-  useEffect(() => {
-    if (!project_id) return
+    setPrefillLoading(true)
     setWeatherLoading(true)
-    fetch(`/api/weather/${project_id}`)
-      .then(r => r.json())
-      .then(({ weather }) => {
-        if (weather) setFields(f => ({ ...f, weather: f.weather || weather }))
-        setWeatherLoading(false)
+    setPrefillNote('')
+
+    try {
+      const reportQuery = new URLSearchParams({ before: fields.report_date }).toString()
+      const previousReportPromise = fetch(`/api/reports/latest/${project_id}?${reportQuery}`)
+        .then(r => r.json())
+        .catch(() => ({ report: null }))
+
+      const weatherPromise = new Promise((resolve) => {
+        const fetchProjectWeather = () => {
+          fetch(`/api/weather/${project_id}?date=${fields.report_date}`)
+            .then(r => r.json())
+            .then(data => resolve(data))
+            .catch(() => resolve({ weather: null, source: null }))
+        }
+
+        if (typeof navigator === 'undefined' || !navigator.geolocation) {
+          fetchProjectWeather()
+          return
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          position => {
+            const params = new URLSearchParams({
+              date: fields.report_date,
+              lat: String(position.coords.latitude),
+              lon: String(position.coords.longitude),
+            }).toString()
+
+            fetch(`/api/weather/${project_id}?${params}`)
+              .then(r => r.json())
+              .then(data => resolve(data))
+              .catch(() => fetchProjectWeather())
+          },
+          () => fetchProjectWeather(),
+          {
+            enableHighAccuracy: false,
+            timeout: 5000,
+            maximumAge: 10 * 60 * 1000,
+          }
+        )
       })
-      .catch(() => setWeatherLoading(false))
-  }, [project_id])
+
+      const [{ report }, weatherData] = await Promise.all([previousReportPromise, weatherPromise])
+
+      setFields(f => ({
+        ...f,
+        crew_count: f.crew_count || String(report?.crew_count ?? ''),
+        equipment_used: f.equipment_used || report?.equipment_used || '',
+        submitted_by: f.submitted_by || report?.submitted_by || '',
+        weather: f.weather || weatherData?.weather || '',
+      }))
+
+      setWeatherSource(
+        weatherData?.source === 'device'
+          ? 'GPS weather'
+          : weatherData?.source === 'project'
+            ? 'Project weather'
+            : ''
+      )
+
+      if (report?.report_date || weatherData?.weather) {
+        const parts = []
+        if (report?.report_date) parts.push(`Crew and submitter pulled from ${report.report_date}`)
+        if (weatherData?.weather) parts.push(`Weather loaded from ${weatherData?.source === 'device' ? 'your location' : 'the project location'}`)
+        setPrefillNote(parts.join(' · '))
+      } else {
+        setPrefillNote('No prior report or weather prefill was available for this date.')
+      }
+    } finally {
+      setPrefillLoading(false)
+      setWeatherLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!project_id || !fields.report_date) return
+    fetchSmartPrefill()
+  }, [project_id, fields.report_date])
 
   // Load project equipment list
   useEffect(() => {
@@ -214,29 +286,98 @@ function DailyReportInner() {
   }
 
   return (
-    <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-      <div style={{ background: 'white', borderRadius: '8px', padding: '2rem', width: '100%', maxWidth: '600px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-        <div style={{ marginBottom: '1.5rem' }}>
-          <a href={project_id ? `/projects/${project_id}` : '/'} style={{ color: '#cc3300', textDecoration: 'none', fontSize: '.9rem' }}>
-            ← Back
-          </a>
+    <FormPage maxWidth="760px">
+      <FormBackLink href={project_id ? `/projects/${project_id}` : '/'}>
+        Back
+      </FormBackLink>
+
+      <FormHero
+        eyebrow={quickMode ? 'Quick Submit' : 'Daily Report'}
+        title={quickMode ? 'Quick Daily Report' : 'Daily Report'}
+        subtitle={project_name_param || (quickMode
+          ? 'Fast field entry with the required details up front.'
+          : 'Capture daily work completed, conditions, schedule, and photos.')}
+        accent="#cc3300"
+      />
+
+        <div style={{ ...formSectionStyle, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontWeight: '700', fontSize: '.95rem', color: '#1a1a1a' }}>
+              {quickMode ? 'Quick Submit Mode' : 'Standard Mode'}
+            </div>
+            <div style={{ fontSize: '.82rem', color: '#888', marginTop: '.1rem' }}>
+              {quickMode
+                ? 'Large tap targets with optional fields tucked away until needed.'
+                : 'Full daily report layout with every field visible.'}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const params = new URLSearchParams({
+                project_id,
+                project_name: fields.project_name || project_name_param,
+              })
+              if (!quickMode) params.set('mode', 'quick')
+              router.push(`/daily-report?${params.toString()}`)
+            }}
+            style={{
+              padding: '.6rem 1rem',
+              background: quickMode ? '#f3f3f3' : '#1a1a1a',
+              color: quickMode ? '#1a1a1a' : 'white',
+              border: quickMode ? '1px solid #ddd' : 'none',
+              borderRadius: '8px',
+              fontWeight: '700',
+              fontSize: '.85rem',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {quickMode ? 'Open Full Form' : 'Open Quick Submit'}
+          </button>
         </div>
 
-        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-          <h1 style={{ color: '#1a1a1a', fontSize: '1.8rem', marginBottom: '.5rem' }}>Daily Report</h1>
-          {project_name_param && (
-            <p style={{ color: '#cc3300', fontSize: '1rem', fontWeight: '600', margin: 0 }}>{project_name_param}</p>
-          )}
+        <div style={{ ...formSectionStyle, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontWeight: '600', fontSize: '.9rem', color: '#1a1a1a' }}>Smart Prefill</div>
+            <div style={{ fontSize: '.8rem', color: '#888', marginTop: '.1rem' }}>
+              {prefillLoading ? 'Loading yesterday crew and current weather…' : prefillNote || 'This report will try to prefill crew size, submitter, and weather for the selected date.'}
+            </div>
+            {weatherSource ? (
+              <div style={{ fontSize: '.75rem', color: '#999', marginTop: '.35rem' }}>
+                Weather source: {weatherSource}
+              </div>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            onClick={fetchSmartPrefill}
+            disabled={prefillLoading || !project_id || !fields.report_date}
+            style={{
+              padding: '.55rem 1.1rem',
+              background: '#f3f3f3',
+              color: '#1a1a1a',
+              border: '1px solid #ddd',
+              borderRadius: '6px',
+              fontSize: '.85rem',
+              fontWeight: '600',
+              cursor: prefillLoading ? 'default' : 'pointer',
+              whiteSpace: 'nowrap',
+              opacity: prefillLoading ? 0.7 : 1,
+            }}
+          >
+            {prefillLoading ? 'Refreshing…' : 'Refresh Prefill'}
+          </button>
         </div>
 
         {/* Copy Previous Report */}
-        <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f9f9f9', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+        <div style={{ ...formSectionStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontWeight: '600', fontSize: '.9rem', color: '#1a1a1a' }}>Copy Previous Report</div>
             <div style={{ fontSize: '.8rem', color: '#888', marginTop: '.1rem' }}>
               {copyState === 'copied' && 'All fields pre-filled — review and edit before submitting.'}
               {copyState === 'none' && 'No previous report found for this project.'}
-              {(copyState === 'idle' || copyState === 'loading') && 'Pre-fill all fields from the last report on this project.'}
+              {(copyState === 'idle' || copyState === 'loading') && 'Pre-fill all fields from your last report on this project.'}
             </div>
           </div>
           <button
@@ -257,17 +398,21 @@ function DailyReportInner() {
         </div>
 
         <form onSubmit={handleSubmit}>
-          <div style={fieldStyle}>
-            <label style={labelStyle}>Project Name</label>
-            <input name="project_name" required style={inputStyle} value={fields.project_name} onChange={set('project_name')} placeholder="e.g. Wichita Substation" />
-          </div>
+          {quickMode ? (
+            <input name="project_name" type="hidden" value={fields.project_name} />
+          ) : (
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Project Name</label>
+              <input name="project_name" required style={inputStyle} value={fields.project_name} onChange={set('project_name')} placeholder="e.g. Wichita Substation" />
+            </div>
+          )}
           <div style={fieldStyle}>
             <label style={labelStyle}>Report Date</label>
-            <input name="report_date" type="date" required style={inputStyle} value={fields.report_date} onChange={set('report_date')} />
+            <input name="report_date" type="date" required style={{ ...inputStyle, padding: quickMode ? '1rem .95rem' : inputStyle.padding, fontSize: quickMode ? '1rem' : inputStyle.fontSize }} value={fields.report_date} onChange={set('report_date')} />
           </div>
           <div style={fieldStyle}>
             <label style={labelStyle}>Crew Count on Site</label>
-            <input name="crew_count" type="number" required style={inputStyle} value={fields.crew_count} onChange={set('crew_count')} placeholder="e.g. 8" />
+            <input name="crew_count" type="number" required style={{ ...inputStyle, padding: quickMode ? '1rem .95rem' : inputStyle.padding, fontSize: quickMode ? '1rem' : inputStyle.fontSize }} value={fields.crew_count} onChange={set('crew_count')} placeholder="e.g. 8" />
           </div>
 
           {/* Work Completed — with AI Polish */}
@@ -294,14 +439,17 @@ function DailyReportInner() {
             <textarea
               name="work_completed"
               required
-              style={{ ...inputStyle, resize: 'vertical', minHeight: '130px', lineHeight: '1.6' }}
+              style={{ ...formTextAreaStyle, minHeight: quickMode ? '180px' : '150px', padding: quickMode ? '1rem' : formTextAreaStyle.padding, fontSize: quickMode ? '1rem' : formTextAreaStyle.fontSize }}
               value={fields.work_completed}
               onChange={set('work_completed')}
               onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
-              placeholder="Describe what was accomplished today — e.g. Poured footings on grid lines A1-A4, set rebar cages for columns B2-B6, graded pad area for building 3..."
+              placeholder={quickMode
+                ? 'What got done today?'
+                : 'Describe what was accomplished today — e.g. Poured footings on grid lines A1-A4, set rebar cages for columns B2-B6, graded pad area for building 3...'}
             />
           </div>
 
+          {showOptionalFields ? (
           <div style={fieldStyle}>
             <label style={labelStyle}>Equipment Used</label>
 
@@ -366,16 +514,17 @@ function DailyReportInner() {
               placeholder="Selected equipment appears here..."
             />
           </div>
+          ) : null}
           <div style={fieldStyle}>
             <label style={labelStyle}>Safety / Issues</label>
-            <input name="safety_issues" required style={inputStyle} value={fields.safety_issues} onChange={set('safety_issues')} placeholder="e.g. None, or describe any incidents" />
+            <input name="safety_issues" required style={{ ...inputStyle, padding: quickMode ? '1rem .95rem' : inputStyle.padding, fontSize: quickMode ? '1rem' : inputStyle.fontSize }} value={fields.safety_issues} onChange={set('safety_issues')} placeholder="e.g. None, or describe any incidents" />
           </div>
           <div style={fieldStyle}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.4rem' }}>
               <label style={{ ...labelStyle, marginBottom: 0 }}>Weather Conditions</label>
               {weatherLoading && <span style={{ fontSize: '.75rem', color: '#aaa' }}>Fetching weather...</span>}
             </div>
-            <input name="weather" required style={inputStyle} value={fields.weather} onChange={set('weather')} placeholder="e.g. Clear, 58°F" />
+            <input name="weather" required style={{ ...inputStyle, padding: quickMode ? '1rem .95rem' : inputStyle.padding, fontSize: quickMode ? '1rem' : inputStyle.fontSize }} value={fields.weather} onChange={set('weather')} placeholder="e.g. Clear, 58°F" />
           </div>
           {/* Weather Delay */}
           <div style={fieldStyle}>
@@ -415,13 +564,13 @@ function DailyReportInner() {
                   onClick={() => setFields(f => ({ ...f, on_schedule: opt.value }))}
                   style={{
                     flex: 1,
-                    padding: '.65rem',
-                    borderRadius: '6px',
+                    padding: quickMode ? '.95rem' : '.65rem',
+                    borderRadius: '8px',
                     border: fields.on_schedule === opt.value ? 'none' : '1px solid #ddd',
                     background: fields.on_schedule === opt.value ? (opt.value ? '#2a7a2a' : '#cc3300') : 'white',
                     color: fields.on_schedule === opt.value ? 'white' : '#555',
                     fontWeight: '600',
-                    fontSize: '.9rem',
+                    fontSize: quickMode ? '1rem' : '.9rem',
                     cursor: 'pointer',
                   }}
                 >
@@ -433,10 +582,39 @@ function DailyReportInner() {
 
           <div style={fieldStyle}>
             <label style={labelStyle}>Submitted By</label>
-            <input name="submitted_by" required style={inputStyle} value={fields.submitted_by} onChange={set('submitted_by')} placeholder="Your name" />
+            <input name="submitted_by" required style={{ ...inputStyle, padding: quickMode ? '1rem .95rem' : inputStyle.padding, fontSize: quickMode ? '1rem' : inputStyle.fontSize }} value={fields.submitted_by} onChange={set('submitted_by')} placeholder="Your name" />
           </div>
 
+          {quickMode ? (
+            <div style={{ ...formSectionStyle, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+              <div>
+                <div style={{ fontWeight: '700', fontSize: '.9rem', color: '#1a1a1a' }}>Optional Details</div>
+                <div style={{ fontSize: '.8rem', color: '#888', marginTop: '.1rem' }}>
+                  Equipment and photos stay hidden until you need them.
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowOptionalFields(value => !value)}
+                style={{
+                  padding: '.6rem 1rem',
+                  background: showOptionalFields ? '#1a1a1a' : '#f3f3f3',
+                  color: showOptionalFields ? 'white' : '#1a1a1a',
+                  border: showOptionalFields ? 'none' : '1px solid #ddd',
+                  borderRadius: '8px',
+                  fontWeight: '700',
+                  fontSize: '.85rem',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {showOptionalFields ? 'Hide Optional Fields' : 'Show Optional Fields'}
+              </button>
+            </div>
+          ) : null}
+
           {/* Photos with labels */}
+          {showOptionalFields ? (
           <div style={fieldStyle}>
             <label style={labelStyle}>
               Photos <span style={{ fontWeight: '400', color: '#888', fontSize: '.9rem' }}>(optional)</span>
@@ -481,20 +659,22 @@ function DailyReportInner() {
               </button>
             </div>
           </div>
+          ) : null}
 
           <button
             type="submit"
             disabled={submitting}
-            style={{ width: '100%', padding: '1rem', background: '#cc3300', color: 'white', border: 'none', borderRadius: '6px', fontSize: '1.1rem', fontWeight: '700', cursor: submitting ? 'default' : 'pointer', marginTop: '.5rem', opacity: submitting ? 0.7 : 1 }}
+            style={{
+              ...formSubmitButtonStyle,
+              opacity: submitting ? 0.7 : 1,
+              padding: quickMode ? '1.05rem 1.2rem' : formSubmitButtonStyle.padding,
+              fontSize: quickMode ? '1.05rem' : formSubmitButtonStyle.fontSize,
+              borderRadius: quickMode ? '10px' : formSubmitButtonStyle.borderRadius,
+            }}
           >
-            {submitting ? 'Submitting...' : 'Submit Daily Report'}
+            {submitting ? 'Submitting...' : quickMode ? 'Quick Submit Daily Report' : 'Submit Daily Report'}
           </button>
         </form>
-      </div>
-    </main>
+    </FormPage>
   )
 }
-
-const fieldStyle = { marginBottom: '1.2rem' }
-const labelStyle = { display: 'block', fontWeight: '600', marginBottom: '.4rem', color: '#333' }
-const inputStyle = { width: '100%', padding: '.75rem', border: '1px solid #ddd', borderRadius: '6px', fontSize: '1rem', boxSizing: 'border-box' }

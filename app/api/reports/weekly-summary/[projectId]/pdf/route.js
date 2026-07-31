@@ -1,20 +1,17 @@
 import { createClient } from '@supabase/supabase-js'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 import { getUserId } from '@/lib/get-user-id'
+import { recordAuditEvent } from '@/lib/audit-log'
+import { getAccessScope, getOwnedProjectById } from '@/lib/organizations'
+import { getWeeklySourceReports } from '@/lib/weekly-reports'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SECRET_KEY
 )
-
-const COLORS = {
-  ink: rgb(0.12, 0.15, 0.19),
-  body: rgb(0.28, 0.33, 0.39),
-  muted: rgb(0.46, 0.5, 0.56),
-  line: rgb(0.87, 0.89, 0.92),
-  card: rgb(0.975, 0.98, 0.985),
-  brand: rgb(0.16, 0.31, 0.45),
-}
 
 function fmt(dateStr) {
   if (!dateStr) return ''
@@ -38,7 +35,7 @@ function wrapText(text, maxChars) {
   return lines.length ? lines : ['']
 }
 
-function drawWeatherBand(page, reports, x, y, width, font, bold) {
+function drawWeatherBand(page, reports, x, y, width, font, bold, COLORS) {
   const halfW = (width - 8) / 2
   const headerH = 18
   const bodyH = 44
@@ -87,22 +84,50 @@ function drawWeatherBand(page, reports, x, y, width, font, bold) {
 
 export async function POST(request, { params }) {
   try {
+    const COLORS = {
+      ink: rgb(0.12, 0.15, 0.19),
+      body: rgb(0.28, 0.33, 0.39),
+      muted: rgb(0.46, 0.5, 0.56),
+      line: rgb(0.87, 0.89, 0.92),
+      card: rgb(0.975, 0.98, 0.985),
+      brand: rgb(0.16, 0.31, 0.45),
+      success: rgb(0.2, 0.53, 0.26),
+      warn: rgb(0.75, 0.45, 0.1),
+    }
+
     const { summary, selectedPhotos, startDate, endDate, projectName } = await request.json()
     const user_id = await getUserId()
+    const accessScope = await getAccessScope(supabase, user_id)
 
     const { data: settings } = await supabase
       .from('settings')
       .select('company_name, logo_url')
       .single()
 
-    const { data: weatherReports } = await supabase
-      .from('reports')
-      .select('report_date, weather, weather_delay, weather_delay_hours')
-      .eq('project_id', params.projectId)
-      .eq('user_id', user_id)
-      .gte('report_date', startDate)
-      .lte('report_date', endDate)
-      .order('report_date', { ascending: true })
+    const { data: project } = await getOwnedProjectById(
+      supabase,
+      user_id,
+      params.projectId,
+      accessScope.scopedOrganizationIds,
+      'id, project_name, organization_id',
+      accessScope.scopedProjectIds,
+      { restrictToAssignedProjects: accessScope.restrictToAssignedProjects }
+    )
+
+    if (!project) {
+      return new Response('Project not found', { status: 404 })
+    }
+
+    const weatherReports = await getWeeklySourceReports(
+      supabase,
+      project.id,
+      user_id,
+      accessScope.scopedOrganizationIds,
+      startDate,
+      endDate,
+      accessScope.scopedProjectIds,
+      accessScope.restrictToAssignedProjects
+    )
 
     const companyName = settings?.company_name || 'Field Reports'
 
@@ -149,7 +174,7 @@ export async function POST(request, { params }) {
     y -= 18
 
     if (weatherReports?.length) {
-      y = drawWeatherBand(page1, weatherReports, margin, y, W - margin * 2, font, bold)
+      y = drawWeatherBand(page1, weatherReports, margin, y, W - margin * 2, font, bold, COLORS)
     }
 
     page1.drawRectangle({ x: margin, y: y - 16, width: W - margin * 2, height: 18, color: COLORS.brand })
@@ -247,6 +272,19 @@ export async function POST(request, { params }) {
 
     const pdfBytes = await pdfDoc.save()
     const safeName = (projectName || 'project').replace(/[^a-zA-Z0-9]/g, '-')
+
+    await recordAuditEvent(supabase, {
+      organizationId: project?.organization_id,
+      actorUserId: user_id,
+      entityType: 'project',
+      entityId: project.id,
+      action: 'weekly_summary_pdf_generated',
+      metadata: {
+        start_date: startDate,
+        end_date: endDate,
+        selected_photo_count: Array.isArray(selectedPhotos) ? selectedPhotos.length : 0,
+      },
+    })
 
     return new Response(pdfBytes, {
       headers: {

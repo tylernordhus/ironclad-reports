@@ -1,23 +1,17 @@
 import { createClient } from '@supabase/supabase-js'
+import { NextResponse } from 'next/server'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
+import { recordAuditEvent } from '@/lib/audit-log'
+import { getUserId } from '@/lib/get-user-id'
+import { getAccessibleReportById } from '@/lib/report-access'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SECRET_KEY
 )
-
-const COLORS = {
-  ink: rgb(0.12, 0.15, 0.19),
-  body: rgb(0.28, 0.33, 0.39),
-  muted: rgb(0.46, 0.5, 0.56),
-  line: rgb(0.87, 0.89, 0.92),
-  card: rgb(0.975, 0.98, 0.985),
-  brand: rgb(0.16, 0.31, 0.45),
-  brandSoft: rgb(0.9, 0.94, 0.98),
-  accent: rgb(0.83, 0.34, 0.12),
-  success: rgb(0.2, 0.53, 0.26),
-  warn: rgb(0.75, 0.45, 0.1),
-}
 
 function formatDate(dateStr) {
   if (!dateStr) return '-'
@@ -44,12 +38,32 @@ function wrapText(text, maxChars) {
 
 
 export async function GET(request, { params }) {
-  const { data: report, error } = await supabase
-    .from('reports')
-    .select('*')
-    .eq('id', params.id)
-    .single()
+  if (request.nextUrl.searchParams.has('mobile_v')) {
+    const viewerUrl = new URL('/mobile/pdf', request.url)
+    viewerUrl.searchParams.set('src', `/api/pdf/${params.id}`)
+    viewerUrl.searchParams.set('title', 'Daily Report PDF')
+    return NextResponse.redirect(viewerUrl)
+  }
 
+  const COLORS = {
+    ink: rgb(0.12, 0.15, 0.19),
+    body: rgb(0.28, 0.33, 0.39),
+    muted: rgb(0.46, 0.5, 0.56),
+    line: rgb(0.87, 0.89, 0.92),
+    card: rgb(0.975, 0.98, 0.985),
+    brand: rgb(0.16, 0.31, 0.45),
+    brandSoft: rgb(0.9, 0.94, 0.98),
+    accent: rgb(0.83, 0.34, 0.12),
+    success: rgb(0.2, 0.53, 0.26),
+    warn: rgb(0.75, 0.45, 0.1),
+  }
+
+  const actorUserId = await getUserId()
+  if (!actorUserId) {
+    return new Response('Unauthorized', { status: 401 })
+  }
+
+  const { report, error } = await getAccessibleReportById(supabase, { reportId: params.id, userId: actorUserId })
   if (error || !report) {
     return new Response('Report not found', { status: 404 })
   }
@@ -239,6 +253,19 @@ export async function GET(request, { params }) {
   }
 
   const pdfBytes = await pdfDoc.save()
+
+  await recordAuditEvent(supabase, {
+    organizationId: report.organization_id,
+    actorUserId,
+    entityType: 'report',
+    entityId: report.id,
+    action: 'pdf_generated',
+    metadata: {
+      route: 'daily_report_pdf',
+      project_id: report.project_id,
+      report_date: report.report_date,
+    },
+  })
 
   return new Response(pdfBytes, {
     headers: {

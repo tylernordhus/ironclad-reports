@@ -2,6 +2,9 @@ import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 import DeleteButton from '@/app/components/DeleteButton'
 import { getUserId } from '@/lib/get-user-id'
+import { applyAccessScope, getAccessScope } from '@/lib/organizations'
+import { getQaFormSummary } from '@/lib/qa-forms'
+import { getQaFormsAvailability, getQaFormsUnavailableMessage } from '@/lib/supabase-errors'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -18,22 +21,71 @@ function formatDate(dateStr) {
 
 export default async function ReportsPage() {
   const user_id = await getUserId()
+  const accessScope = await getAccessScope(supabase, user_id)
 
   const [
     { data: projects },
     { data: reports },
     { data: pourLogs },
-    { data: contractorEvals }
+    { data: contractorEvals },
+    qaFormsResult,
   ] = await Promise.all([
-    supabase.from('projects').select('*').eq('user_id', user_id).order('project_name', { ascending: true }),
-    supabase.from('reports').select('*').eq('user_id', user_id).order('report_date', { ascending: false }),
-    supabase.from('pour_logs').select('*').eq('user_id', user_id).order('log_date', { ascending: false }),
-    supabase.from('contractor_evaluations').select('*').eq('user_id', user_id).order('inspection_date', { ascending: false })
+    applyAccessScope(
+      supabase.from('projects').select('*').order('project_name', { ascending: true }),
+      user_id,
+      accessScope.scopedOrganizationIds,
+      accessScope.scopedProjectIds,
+      {
+        projectIdColumn: 'id',
+        restrictToAssignedProjects: accessScope.restrictToAssignedProjects,
+      }
+    ),
+    applyAccessScope(
+      supabase.from('reports').select('*').order('report_date', { ascending: false }),
+      user_id,
+      accessScope.scopedOrganizationIds,
+      accessScope.scopedProjectIds,
+      {
+        restrictToAssignedProjects: accessScope.restrictToAssignedProjects,
+      }
+    ),
+    applyAccessScope(
+      supabase.from('pour_logs').select('*').order('log_date', { ascending: false }),
+      user_id,
+      accessScope.scopedOrganizationIds,
+      accessScope.scopedProjectIds,
+      {
+        restrictToAssignedProjects: accessScope.restrictToAssignedProjects,
+      }
+    ),
+    applyAccessScope(
+      supabase.from('contractor_evaluations').select('*').order('inspection_date', { ascending: false }),
+      user_id,
+      accessScope.scopedOrganizationIds,
+      accessScope.scopedProjectIds,
+      {
+        restrictToAssignedProjects: accessScope.restrictToAssignedProjects,
+      }
+    ),
+    applyAccessScope(
+      supabase.from('qa_forms').select('*').order('work_date', { ascending: false }),
+      user_id,
+      accessScope.scopedOrganizationIds,
+      accessScope.scopedProjectIds,
+      {
+        restrictToAssignedProjects: accessScope.restrictToAssignedProjects,
+      }
+    ),
   ])
+
+  const qaFormsAvailability = getQaFormsAvailability(qaFormsResult.error)
+  const qaForms = qaFormsAvailability.available ? (qaFormsResult.data || []) : []
+  const qaFormsUnavailableMessage = getQaFormsUnavailableMessage(qaFormsAvailability.reason)
 
   const reportsByProject = {}
   const pourLogsByProject = {}
   const evalsByProject = {}
+  const qaFormsByProject = {}
 
   for (const r of reports || []) {
     const key = r.project_id || 'unassigned'
@@ -50,13 +102,19 @@ export default async function ReportsPage() {
     if (!evalsByProject[key]) evalsByProject[key] = []
     evalsByProject[key].push(e)
   }
+  for (const form of qaForms) {
+    const key = form.project_id || 'unassigned'
+    if (!qaFormsByProject[key]) qaFormsByProject[key] = []
+    qaFormsByProject[key].push(form)
+  }
 
   const projectList = projects || []
   const allProjectIds = new Set([
     ...projectList.map(p => p.id),
     ...Object.keys(reportsByProject),
     ...Object.keys(pourLogsByProject),
-    ...Object.keys(evalsByProject)
+    ...Object.keys(evalsByProject),
+    ...Object.keys(qaFormsByProject),
   ])
 
   const sections = []
@@ -68,7 +126,8 @@ export default async function ReportsPage() {
       name: project?.project_name || 'Unknown Project',
       reports: reportsByProject[pid] || [],
       pourLogs: pourLogsByProject[pid] || [],
-      evals: evalsByProject[pid] || []
+      evals: evalsByProject[pid] || [],
+      qaForms: qaFormsByProject[pid] || [],
     })
   }
   sections.sort((a, b) => a.name.localeCompare(b.name))
@@ -76,7 +135,8 @@ export default async function ReportsPage() {
   const unassignedReports = reportsByProject['unassigned'] || []
   const unassignedPourLogs = pourLogsByProject['unassigned'] || []
   const unassignedEvals = evalsByProject['unassigned'] || []
-  const hasUnassigned = unassignedReports.length > 0 || unassignedPourLogs.length > 0 || unassignedEvals.length > 0
+  const unassignedQaForms = qaFormsByProject['unassigned'] || []
+  const hasUnassigned = unassignedReports.length > 0 || unassignedPourLogs.length > 0 || unassignedEvals.length > 0 || unassignedQaForms.length > 0
 
   return (
     <main style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem' }}>
@@ -87,6 +147,19 @@ export default async function ReportsPage() {
       </div>
 
       <h1 style={{ fontSize: '1.8rem', color: '#1a1a1a', marginBottom: '2rem' }}>All Reports</h1>
+
+      {!qaFormsAvailability.available && qaFormsUnavailableMessage && (
+        <div style={{
+          background: '#fff7e8',
+          border: '1px solid #f2d08a',
+          borderRadius: '8px',
+          padding: '1rem 1.25rem',
+          color: '#7a5a12',
+          marginBottom: '1.5rem'
+        }}>
+          {qaFormsUnavailableMessage}
+        </div>
+      )}
 
       {sections.length === 0 && !hasUnassigned && (
         <p style={{ color: '#666' }}>No reports submitted yet.</p>
@@ -110,18 +183,21 @@ export default async function ReportsPage() {
           </div>
 
           <div style={{ border: '1px solid #e5e5e5', borderTop: 'none', borderRadius: '0 0 8px 8px', overflow: 'hidden' }}>
-            {section.reports.length === 0 && section.pourLogs.length === 0 && (
+            {section.reports.length === 0 && section.pourLogs.length === 0 && section.evals.length === 0 && section.qaForms.length === 0 && (
               <div style={{ padding: '1rem 1.5rem', color: '#999', fontSize: '.9rem' }}>No reports yet.</div>
             )}
 
             {section.reports.map((r, i) => (
-              <ReportRow key={r.id} report={r} isLast={i === section.reports.length - 1 && section.pourLogs.length === 0 && section.evals.length === 0} />
+              <ReportRow key={r.id} report={r} isLast={i === section.reports.length - 1 && section.pourLogs.length === 0 && section.evals.length === 0 && section.qaForms.length === 0} />
             ))}
             {section.pourLogs.map((p, i) => (
-              <PourLogRow key={p.id} log={p} isLast={i === section.pourLogs.length - 1 && section.evals.length === 0} />
+              <PourLogRow key={p.id} log={p} isLast={i === section.pourLogs.length - 1 && section.evals.length === 0 && section.qaForms.length === 0} />
             ))}
             {section.evals.map((e, i) => (
-              <EvalRow key={e.id} eval_={e} isLast={i === section.evals.length - 1} />
+              <EvalRow key={e.id} eval_={e} isLast={i === section.evals.length - 1 && section.qaForms.length === 0} />
+            ))}
+            {section.qaForms.map((form, i) => (
+              <QaFormRow key={form.id} form={form} isLast={i === section.qaForms.length - 1} />
             ))}
           </div>
         </div>
@@ -134,13 +210,16 @@ export default async function ReportsPage() {
           </div>
           <div style={{ border: '1px solid #e5e5e5', borderTop: 'none', borderRadius: '0 0 8px 8px', overflow: 'hidden' }}>
             {unassignedReports.map((r, i) => (
-              <ReportRow key={r.id} report={r} isLast={i === unassignedReports.length - 1 && unassignedPourLogs.length === 0 && unassignedEvals.length === 0} />
+              <ReportRow key={r.id} report={r} isLast={i === unassignedReports.length - 1 && unassignedPourLogs.length === 0 && unassignedEvals.length === 0 && unassignedQaForms.length === 0} />
             ))}
             {unassignedPourLogs.map((p, i) => (
-              <PourLogRow key={p.id} log={p} isLast={i === unassignedPourLogs.length - 1 && unassignedEvals.length === 0} />
+              <PourLogRow key={p.id} log={p} isLast={i === unassignedPourLogs.length - 1 && unassignedEvals.length === 0 && unassignedQaForms.length === 0} />
             ))}
             {unassignedEvals.map((e, i) => (
-              <EvalRow key={e.id} eval_={e} isLast={i === unassignedEvals.length - 1} />
+              <EvalRow key={e.id} eval_={e} isLast={i === unassignedEvals.length - 1 && unassignedQaForms.length === 0} />
+            ))}
+            {unassignedQaForms.map((form, i) => (
+              <QaFormRow key={form.id} form={form} isLast={i === unassignedQaForms.length - 1} />
             ))}
           </div>
         </div>
@@ -257,6 +336,48 @@ function PourLogRow({ log, isLast }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
         <Link href={`/pour-logs/${log.id}`} style={{ color: '#1a4acc', fontSize: '.85rem', textDecoration: 'none', fontWeight: '600' }}>View</Link>
         <DeleteButton action={`/api/delete/pour-log/${log.id}`} label="Delete" style={{ background: 'none', border: 'none', color: '#ccc', fontSize: '.85rem', cursor: 'pointer', padding: 0 }} />
+      </div>
+    </div>
+  )
+}
+
+function QaFormRow({ form, isLast }) {
+  const summary = getQaFormSummary(form)
+  return (
+    <div style={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: '1rem 1.5rem',
+      background: 'white',
+      borderBottom: isLast ? 'none' : '1px solid #f0f0f0'
+    }}>
+      <Link href={`/qa-forms/${form.id}`} style={{ textDecoration: 'none', flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <span style={{
+            background: '#eef6f8',
+            color: '#24506d',
+            fontSize: '.7rem',
+            fontWeight: '700',
+            padding: '.2rem .5rem',
+            borderRadius: '4px',
+            whiteSpace: 'nowrap'
+          }}>
+            {summary.code}
+          </span>
+          <div>
+            <div style={{ fontWeight: '600', color: '#1a1a1a', fontSize: '.95rem' }}>
+              {formatDate(form.work_date)}
+            </div>
+            <div style={{ color: '#888', fontSize: '.8rem' }}>
+              {summary.shortLabel} · {form.submitted_by || '-'}
+            </div>
+          </div>
+        </div>
+      </Link>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <Link href={`/qa-forms/${form.id}`} style={{ color: '#24506d', fontSize: '.85rem', textDecoration: 'none', fontWeight: '600' }}>View</Link>
+        <DeleteButton action={`/api/delete/qa-form/${form.id}`} label="Delete" style={{ background: 'none', border: 'none', color: '#ccc', fontSize: '.85rem', cursor: 'pointer', padding: 0 }} />
       </div>
     </div>
   )

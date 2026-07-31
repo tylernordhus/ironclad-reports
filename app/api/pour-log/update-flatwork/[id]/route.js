@@ -1,4 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
+import { recordAuditEvent } from '@/lib/audit-log'
+import { getUserId } from '@/lib/get-user-id'
+import { getAccessiblePourLogById } from '@/lib/pour-log-access'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -7,7 +10,14 @@ const supabase = createClient(
 
 export async function POST(request, { params }) {
   try {
+    const userId = await getUserId()
+    const { log } = await getAccessiblePourLogById(supabase, { logId: params.id, userId })
+    if (!log) {
+      return Response.json({ error: 'Pour log not found.' }, { status: 404 })
+    }
+
     const body = await request.json()
+    const isAutosave = body.autosave === true
     const {
       project_name, log_date, weather, ambient_temp, concrete_supplier,
       submitted_by, area_location, square_footage, thickness,
@@ -32,6 +42,7 @@ export async function POST(request, { params }) {
         trucks.map(t => ({
           pour_log_id: params.id,
           truck_number: t.truck_number,
+          batch_time: t.batch_time || null,
           arrival_time: t.arrival_time || null,
           pour_start: t.pour_start || null,
           pour_complete: t.pour_complete || null,
@@ -45,6 +56,21 @@ export async function POST(request, { params }) {
         }))
       )
       if (truckError) throw truckError
+    }
+
+    if (!isAutosave) {
+      await recordAuditEvent(supabase, {
+        organizationId: log.organization_id,
+        actorUserId: userId,
+        entityType: 'pour_log',
+        entityId: params.id,
+        action: 'update',
+        metadata: {
+          project_name,
+          log_date,
+          log_type: 'flatwork',
+        },
+      })
     }
 
     return Response.json({ success: true })

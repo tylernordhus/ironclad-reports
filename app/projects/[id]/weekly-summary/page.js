@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { Suspense, useState, useRef } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -40,6 +40,7 @@ function WeeklySummaryInner() {
 
   const [weekOffset, setWeekOffset] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
   const [projectName, setProjectName] = useState('')
   const [reportCount, setReportCount] = useState(0)
@@ -47,8 +48,12 @@ function WeeklySummaryInner() {
   const [allPhotos, setAllPhotos] = useState([]) // [{ id, url, label, date, isExtra }]
   const [selectedIds, setSelectedIds] = useState(new Set())
   const nextExtraId = useRef(1000)
-  const [generated, setGenerated] = useState(false)
+  const [loaded, setLoaded] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [savedReportId, setSavedReportId] = useState('')
+  const [sourceLabel, setSourceLabel] = useState('blank')
+  const [notice, setNotice] = useState('')
+  const [lastGenerated, setLastGenerated] = useState(false)
 
   const bounds = getWeekBounds(weekOffset)
 
@@ -56,27 +61,34 @@ function WeeklySummaryInner() {
     const next = weekOffset + delta
     if (next > 0) return
     setWeekOffset(next)
-    setGenerated(false)
-    setSummary('')
-    setAllPhotos([])
-    setSelectedIds(new Set())
+    setLoaded(false)
+    setSavedReportId('')
+    setSourceLabel('blank')
+    setNotice('')
   }
 
-  async function generate() {
+  async function loadReport(mode = 'load') {
     setLoading(true)
     try {
       const res = await fetch(
-        `/api/reports/weekly-summary/${projectId}?start=${bounds.start}&end=${bounds.end}`
+        `/api/reports/weekly-summary/${projectId}?start=${bounds.start}&end=${bounds.end}${mode === 'generate' ? '&mode=generate' : ''}`
       )
       const data = await res.json()
-      if (!data.summary) {
-        alert('No daily reports found for this week.')
+
+      if (!res.ok) {
+        alert(data?.error || 'Failed to load weekly report.')
         setLoading(false)
         return
       }
-      setSummary(data.summary)
+
+      setSummary(data.summary || '')
       setProjectName(data.project_name || '')
       setReportCount(data.reports?.length || 0)
+      setSavedReportId(data.weekly_report?.id || '')
+      setSourceLabel(data.source || 'blank')
+      setLastGenerated(mode === 'generate')
+      setLoaded(true)
+      setNotice('')
 
       // Collect all photos from all reports
       const photos = []
@@ -96,12 +108,15 @@ function WeeklySummaryInner() {
       setAllPhotos(photos)
       // Select all by default
       setSelectedIds(new Set(photos.map(p => p.id)))
-      setGenerated(true)
     } catch {
-      alert('Failed to generate summary. Please try again.')
+      alert('Failed to load weekly report. Please try again.')
     }
     setLoading(false)
   }
+
+  useEffect(() => {
+    loadReport()
+  }, [projectId, weekOffset])
 
   function togglePhoto(id) {
     setSelectedIds(prev => {
@@ -184,6 +199,37 @@ function WeeklySummaryInner() {
     setPdfLoading(false)
   }
 
+  async function saveWeeklyReport() {
+    setSaving(true)
+    setNotice('')
+    try {
+      const res = await fetch(`/api/reports/weekly-summary/${projectId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          startDate: bounds.start,
+          endDate: bounds.end,
+          summary,
+          generatedFromDailyReports: lastGenerated,
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        alert(data?.error || 'Failed to save weekly report.')
+        setSaving(false)
+        return
+      }
+
+      setSavedReportId(data.weekly_report?.id || '')
+      setSourceLabel('saved')
+      setNotice('Weekly report saved.')
+    } catch {
+      alert('Failed to save weekly report. Please try again.')
+    }
+    setSaving(false)
+  }
+
   function copyText() {
     navigator.clipboard.writeText(summary)
     setCopied(true)
@@ -203,7 +249,7 @@ function WeeklySummaryInner() {
       <div style={{ background: 'white', borderRadius: '8px', padding: '2rem', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', marginBottom: '1.5rem' }}>
         <h1 style={{ fontSize: '1.6rem', color: '#1a1a1a', marginBottom: '.25rem', marginTop: 0 }}>Weekly Summary</h1>
         <p style={{ color: '#888', fontSize: '.9rem', marginBottom: '1.5rem', marginTop: 0 }}>
-          AI-generated from daily reports — edit, select photos, then download as PDF.
+          Create a weekly report even if no daily reports exist. If daily reports are available, you can auto-fill from them, then edit and export to PDF.
         </p>
 
         {/* Week selector */}
@@ -217,16 +263,25 @@ function WeeklySummaryInner() {
           </button>
         </div>
 
-        <button
-          onClick={generate}
-          disabled={loading}
-          style={{ width: '100%', padding: '.9rem', background: '#cc3300', color: 'white', border: 'none', borderRadius: '6px', fontSize: '1rem', fontWeight: '700', cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.7 : 1 }}
-        >
-          {loading ? 'Generating...' : generated ? 'Regenerate' : 'Generate AI Summary'}
-        </button>
+        <div style={{ display: 'flex', gap: '.75rem', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => loadReport('generate')}
+            disabled={loading}
+            style={{ flex: 1, minWidth: '220px', padding: '.9rem', background: '#cc3300', color: 'white', border: 'none', borderRadius: '6px', fontSize: '1rem', fontWeight: '700', cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.7 : 1 }}
+          >
+            {loading ? 'Loading...' : 'Auto-Fill from Daily Reports'}
+          </button>
+          <button
+            onClick={() => loadReport('load')}
+            disabled={loading}
+            style={{ flex: 1, minWidth: '220px', padding: '.9rem', background: '#f3f3f3', color: '#1a1a1a', border: '1px solid #ddd', borderRadius: '6px', fontSize: '1rem', fontWeight: '700', cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.7 : 1 }}
+          >
+            Reload Saved / Blank Report
+          </button>
+        </div>
       </div>
 
-      {generated && (
+      {loaded && (
         <>
           {/* Editable summary */}
           <div style={{ background: 'white', borderRadius: '8px', padding: '2rem', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', marginBottom: '1.5rem' }}>
@@ -236,9 +291,18 @@ function WeeklySummaryInner() {
                 <div style={{ fontSize: '.8rem', color: '#999', marginTop: '.1rem' }}>
                   {projectName} · {fmt(bounds.start)} – {fmt(bounds.end)} · {reportCount} report{reportCount !== 1 ? 's' : ''}
                 </div>
+                <div style={{ fontSize: '.76rem', color: '#888', marginTop: '.25rem' }}>
+                  Source: {sourceLabel === 'saved' ? 'Saved weekly report' : sourceLabel === 'generated' ? 'AI-filled from daily reports' : 'Blank manual report'}
+                  {savedReportId ? ` · Saved` : ' · Not saved yet'}
+                </div>
               </div>
               <span style={{ fontSize: '.75rem', color: '#aaa' }}>Edit as needed</span>
             </div>
+            {notice ? (
+              <div style={{ marginBottom: '.85rem', padding: '.7rem .85rem', borderRadius: '6px', background: '#eaf7ed', color: '#226236', fontSize: '.9rem', fontWeight: '600' }}>
+                {notice}
+              </div>
+            ) : null}
             <textarea
               value={summary}
               onChange={e => setSummary(e.target.value)}
@@ -356,6 +420,13 @@ function WeeklySummaryInner() {
 
           {/* Action buttons */}
           <div style={{ display: 'flex', gap: '.75rem' }}>
+            <button
+              onClick={saveWeeklyReport}
+              disabled={saving}
+              style={{ flex: 1.25, padding: '.9rem', background: '#1a1a1a', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '700', fontSize: '.95rem', cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1 }}
+            >
+              {saving ? 'Saving...' : 'Save Weekly Report'}
+            </button>
             <button
               onClick={downloadPdf}
               disabled={pdfLoading}

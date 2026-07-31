@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { getUserId } from '@/lib/get-user-id'
+import { getAccessScope, getOwnedProjectById } from '@/lib/organizations'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -7,38 +8,66 @@ const supabase = createClient(
 )
 
 export async function GET(request, { params }) {
-  const user_id = await getUserId()
-  const { data } = await supabase
-    .from('projects')
-    .select('equipment_list')
-    .eq('id', params.id)
-    .eq('user_id', user_id)
-    .single()
+  const userId = await getUserId()
+  if (!userId) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
-  return Response.json({ equipment_list: data?.equipment_list || [] })
+  const accessScope = await getAccessScope(supabase, userId)
+  const { data: project, error } = await getOwnedProjectById(
+    supabase,
+    userId,
+    params.id,
+    accessScope.scopedOrganizationIds,
+    'equipment_list',
+    accessScope.scopedProjectIds,
+    { restrictToAssignedProjects: accessScope.restrictToAssignedProjects }
+  )
+
+  if (error || !project) {
+    return Response.json({ error: 'Project not found.' }, { status: 404 })
+  }
+
+  return Response.json({ equipment_list: project.equipment_list || [] })
 }
 
 export async function POST(request, { params }) {
-  const user_id = await getUserId()
+  const userId = await getUserId()
+  if (!userId) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const { item } = await request.json()
-  if (!item?.trim()) return Response.json({ ok: false })
+  const trimmedItem = item?.trim()
+  if (!trimmedItem) return Response.json({ ok: false })
 
-  const { data } = await supabase
-    .from('projects')
-    .select('equipment_list')
-    .eq('id', params.id)
-    .eq('user_id', user_id)
-    .single()
+  const accessScope = await getAccessScope(supabase, userId)
+  const { data: project, error } = await getOwnedProjectById(
+    supabase,
+    userId,
+    params.id,
+    accessScope.scopedOrganizationIds,
+    'equipment_list',
+    accessScope.scopedProjectIds,
+    { restrictToAssignedProjects: accessScope.restrictToAssignedProjects }
+  )
 
-  const current = data?.equipment_list || []
-  if (current.includes(item.trim())) return Response.json({ ok: true, equipment_list: current })
+  if (error || !project) {
+    return Response.json({ error: 'Project not found.' }, { status: 404 })
+  }
 
-  const updated = [...current, item.trim()]
-  await supabase
+  const current = project.equipment_list || []
+  if (current.includes(trimmedItem)) return Response.json({ ok: true, equipment_list: current })
+
+  const updated = [...current, trimmedItem]
+  const { error: updateError } = await supabase
     .from('projects')
     .update({ equipment_list: updated })
     .eq('id', params.id)
-    .eq('user_id', user_id)
+
+  if (updateError) {
+    return Response.json({ error: updateError.message || 'Failed to update equipment.' }, { status: 500 })
+  }
 
   return Response.json({ ok: true, equipment_list: updated })
 }

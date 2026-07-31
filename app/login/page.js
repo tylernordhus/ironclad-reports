@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase-browser'
 
 export default function LoginPage() {
@@ -8,6 +8,19 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [mobileApprovalError, setMobileApprovalError] = useState(false)
+  const [signupHref, setSignupHref] = useState('/signup')
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    setMobileApprovalError(params.get('error') === 'mobile-not-approved')
+    setSignupHref(`/signup${window.location.search || ''}`)
+    const presetEmail = params.get('email')
+    if (presetEmail) {
+      setEmail(presetEmail)
+    }
+  }, [])
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -21,7 +34,9 @@ export default function LoginPage() {
       setError(error.message)
       setLoading(false)
     } else {
-      window.location.href = '/'
+      const params = new URLSearchParams(window.location.search)
+      const nextPath = params.get('next')
+      window.location.href = nextPath && nextPath.startsWith('/') ? nextPath : '/'
     }
   }
 
@@ -52,6 +67,11 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleLogin}>
+          {mobileApprovalError && !error && (
+            <p style={{ color: '#cc3300', fontSize: '.9rem', marginBottom: '1rem', textAlign: 'center' }}>
+              This account is not approved for mobile access yet.
+            </p>
+          )}
           <div style={{ marginBottom: '1.2rem' }}>
             <label style={labelStyle}>Email</label>
             <input
@@ -98,7 +118,10 @@ export default function LoginPage() {
 
         <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '.9rem', color: '#666' }}>
           Don&apos;t have an account?{' '}
-          <a href="/signup" style={{ color: '#cc3300', fontWeight: '600', textDecoration: 'none' }}>
+          <a
+            href={signupHref}
+            style={{ color: '#cc3300', fontWeight: '600', textDecoration: 'none' }}
+          >
             Sign up
           </a>
         </p>

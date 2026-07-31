@@ -1,5 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
+import { notFound } from 'next/navigation'
+import { getUserId } from '@/lib/get-user-id'
+import { getAccessibleReportById } from '@/lib/report-access'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -9,15 +12,9 @@ const supabase = createClient(
 export const revalidate = 0
 
 export default async function EditReport({ params }) {
-  const { data: report, error } = await supabase
-    .from('reports')
-    .select('*')
-    .eq('id', params.id)
-    .single()
-
-  if (error || !report) {
-    return <p style={{ padding: '2rem', color: 'red' }}>Report not found.</p>
-  }
+  const userId = await getUserId()
+  const { report } = await getAccessibleReportById(supabase, { reportId: params.id, userId })
+  if (!report) notFound()
 
   return (
     <main style={{

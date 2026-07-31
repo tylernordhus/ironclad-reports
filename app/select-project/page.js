@@ -2,6 +2,8 @@ import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getUserId } from '@/lib/get-user-id'
+import { applyAccessScope, getAccessScope } from '@/lib/organizations'
+import { getProjectReportTypeSettingsMap, isProjectReportTypeEnabled } from '@/lib/project-report-types'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -10,6 +12,7 @@ const supabase = createClient(
 
 const FORM_LABELS = {
   'daily-report': 'Daily Report',
+  'daily-report-quick': 'Quick Submit',
   'pour-log': 'Pour Log',
   'pour-log-flatwork': 'Flatwork Log',
   'contractor-eval': 'Contractor Evaluation'
@@ -17,9 +20,18 @@ const FORM_LABELS = {
 
 const FORM_PATHS = {
   'daily-report': '/daily-report',
+  'daily-report-quick': '/daily-report',
   'pour-log': '/pour-log',
   'pour-log-flatwork': '/pour-log-flatwork',
   'contractor-eval': '/contractor-eval'
+}
+
+const FORM_REPORT_TYPES = {
+  'daily-report': 'daily_report',
+  'daily-report-quick': 'daily_report',
+  'pour-log': 'pour_log',
+  'pour-log-flatwork': 'pour_log',
+  'contractor-eval': 'contractor_evaluation',
 }
 
 export default async function SelectProjectPage(props) {
@@ -31,12 +43,32 @@ export default async function SelectProjectPage(props) {
   }
 
   const user_id = await getUserId()
+  const accessScope = await getAccessScope(supabase, user_id)
 
-  const { data: projects } = await supabase
+  let projectsQuery = supabase
     .from('projects')
     .select('id, project_name')
-    .eq('user_id', user_id)
     .order('project_name', { ascending: true })
+
+  projectsQuery = applyAccessScope(
+    projectsQuery,
+    user_id,
+    accessScope.scopedOrganizationIds,
+    accessScope.scopedProjectIds,
+    {
+      projectIdColumn: 'id',
+      restrictToAssignedProjects: accessScope.restrictToAssignedProjects,
+    }
+  )
+
+  const { data: projects } = await projectsQuery
+  const reportTypeSettingsMap = await getProjectReportTypeSettingsMap(
+    supabase,
+    (projects || []).map(project => project.id)
+  )
+  const filteredProjects = (projects || []).filter(project =>
+    isProjectReportTypeEnabled(reportTypeSettingsMap[project.id], FORM_REPORT_TYPES[forForm])
+  )
 
   const formLabel = FORM_LABELS[forForm]
   const formPath = FORM_PATHS[forForm]
@@ -56,22 +88,22 @@ export default async function SelectProjectPage(props) {
             <div style={{ fontSize: '1.3rem', fontWeight: '700' }}>Select a Project</div>
           </div>
 
-          {(!projects || projects.length === 0) ? (
+          {filteredProjects.length === 0 ? (
             <div style={{ padding: '2rem', textAlign: 'center', color: '#999' }}>
-              <p>No projects found.</p>
+              <p>No matching projects found for this report type.</p>
               <Link href="/projects" style={{ color: '#cc3300', textDecoration: 'none', fontWeight: '600' }}>Create a project first →</Link>
             </div>
           ) : (
             <div>
-              {projects.map((project, i) => (
+              {filteredProjects.map((project, i) => (
                 <Link
                   key={project.id}
-                  href={`${formPath}?project_id=${project.id}&project_name=${encodeURIComponent(project.project_name)}`}
+                  href={`${formPath}?project_id=${project.id}&project_name=${encodeURIComponent(project.project_name)}${forForm === 'daily-report-quick' ? '&mode=quick' : ''}`}
                   style={{ textDecoration: 'none' }}
                 >
                   <div style={{
                     padding: '1.2rem 2rem',
-                    borderBottom: i < projects.length - 1 ? '1px solid #f0f0f0' : 'none',
+                    borderBottom: i < filteredProjects.length - 1 ? '1px solid #f0f0f0' : 'none',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
