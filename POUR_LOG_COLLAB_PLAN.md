@@ -71,3 +71,13 @@ Static review only. No application code was changed while making this checklist.
 - [ ] Current local-draft behavior is useful as an offline cushion, but it is device-local only. It does not let another inspector see unsaved work.
 - [ ] Access checks exist through `getAccessiblePourLogById()`, but the future collaboration feature still needs clear rules for who can join an active pour and who owns the final record.
 - [ ] There is no automated regression test coverage for this pour-log collaboration path yet.
+
+## Triage Notes (2026-07-31)
+
+Biggest structural issue: pour-log saves currently delete and reinsert ALL foundations and trucks on every save (both drilled-shaft and flatwork). For two-person collaboration this must become surgical, section-scoped updates instead of delete-and-rebuild. This is the core of the section-save work.
+
+Small bug A: the flatwork update route replaces trucks but ignores whether the delete succeeded before inserting, which could leave duplicate or stale truck rows.
+
+Small bug B: the flatwork update route returns plain text on failure instead of a JSON error, making failures hard to diagnose from the UI.
+
+To verify in the database later: confirm the pour_logs table actually has an updated_at column, since the draft-staleness logic depends on it.
